@@ -1,0 +1,55 @@
+WHAT IS SYCL / DPC++?
+oneAPI is a framework that allows the user to write code targeting a variety of hardware accelerators (CPUs, GPUs, FPGAs) and architectures using a unified, high-level programming language.
+
+SYCL (pronounced 'sickle') is an abstraction layer that builds upon OpenCL, allowing for data-parallel programming for C++. SYCL allows developers to program at a higher level than OpenCL but still has seamless integration with OpenCL and C/C++ libraries.
+
+Data Parallel C++ (DPC++) is the programming language used to write oneAPI programs. DPC++ incorporates the SYCL standard for data parallelism and heterogeneous programming. Basically C++ with extra functionality for data parallelism. DPC++ programs are called on the host computer and offload computation to the accelerator, where instructed to do so (via queue, buffer, device, and kernel abstractions).
+
+SYCL is more of a framework, while DPC++ is a language. DPC++ extends SYCL and is open source. The goal is for DPC++ to become a core SYCL extension.
+
+WHY USE SYCL / DPC++
+
+A variety of devices are used for workload acceleration, including CPUs, GPUs, and FPGAs. Having to tailor the code you write to the device you're working with does not allow for much flexibility or distributibility. Anyone working with a different device will likely not be able to reuse your code, and changing to a new device may require you to rewrite all current code targeting the previous device.
+openAPI libraries contain pre-written code custom-made for each architecture, so every high-level function call is optimized for each supported device.
+
+
+
+
+PLATFORM MODEL
+The oneAPI and SYCL platfor models specify a host that controls one or more devices (accelerators). https://raw.githubusercontent.com/oneapi-src/oneAPI-samples/d403a9acd340240dff39f051d71c9d3dcbc685ac/DirectProgramming/DPC++/Jupyter/oneapi-essentials-training/01_oneAPI_Intro/Assets/plat30.png
+
+
+EXECUTION MODEL
+The SYCL execution model defines how code (termed 'kernels') executes on the device and interacts with the controlling host. Data management and execution are coordinated via command groups, which are submitted to queues for execution.
+In the execution model, a program declares and instantiates queues, which can be executed either in- or out-of-order.
+(Stuff about ND-ranges, work-groups, sub-groups, work-items.) https://raw.githubusercontent.com/oneapi-src/oneAPI-samples/d403a9acd340240dff39f051d71c9d3dcbc685ac/DirectProgramming/DPC++/Jupyter/oneapi-essentials-training/01_oneAPI_Intro/Assets/kernel30.png
+
+
+MEMORY MODEL
+The SYCL memory model defines how the host and devices interact with memory. The memory model is an abstraction that is intended to be adaptable to different possible host and device configurations
+"In this model, memory resides upon and is owned by either the host or the device and is specified by declaring a memory object."
+Interactions between memory objects and host/devices is accomplished via an accessor.
+
+
+KERNEL PROGRAMMING MODEL
+The programmer determines what code executes on the host and the device. The kernel code executes on the accelerator.
+Host and device code can be in the same source file
+
+
+
+IMPLEMENTATION
+As a first step in DPC++, create a queue. Tasks are then submitted to the queue, which are offloaded to a device.
+CPU, GPU, and FPGA can be specified through the selector.
+The default "q" option for queue uses the default selector, which selects the most capable device available at runtime.
+"By creating Buffers and Accessors, DPC++ ensures that the data is available to host and device without any effort on your part. DPC++ also allows you explicit control over data movement to achieve best peformance."
+
+
+
+
+
+NOTES
+Accelerated code can be written in either a kernel (DPC++) or directive-based style
+A compatibility tool can perform a migration from CUDA to DPC++
+OpenMP represents the directive-based style
+C++ can be either kernel style or directive style
+OpenCL can stay OpenCL or migrate to DPC++
