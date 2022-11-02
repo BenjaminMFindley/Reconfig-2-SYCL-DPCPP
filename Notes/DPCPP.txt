@@ -1,0 +1,121 @@
+DPC++ is oneAPI's implementation of SYCL.
+DPC++ is described as a "SYCL-aware C++ compiler"
+"SYCL is a single source where host code and heterogeneous accelerator kernels can be mixed in same source files."
+"Every DPC++ (or SYCL) program is also a C++ program. Neither SYCL
+nor DPC++ relies on any language changes to C++. Both can be fully
+implemented with templates and lambda functions."
+
+
+Kernel code = code to be run on a device
+"The kernel class encapsulates methods and data for executing code on the device when a command group is instantiated. Kernel object is not explicitly constructed by the user and is constructed when a kernel dispatch function, such as parallel_for, is called"
+
+kernel code usually takes the form of lambda functions. Such lambda functions must capture variables by value [=]. SYCL kernel functions always have a return type of void.
+
+More specialized kernel code can be written for specific types of accelerators or specific models. In addition to a main, generic kernel.
+
+QUEUES
+
+"A queue is an abstraction to which actions are submitted for execution on a single device"
+"A queue is bound to a single device, and that binding occurs on
+construction of the queue. It is important to understand that work
+submitted to a queue is executed on the single device to which that queue
+is bound. Queues cannot be mapped to collections of devices because that
+would create ambiguity on which device should perform work. Similarly,
+a queue cannot spread the work submitted to it across multiple devices.
+Instead, there is an unambiguous mapping between a queue and the
+device on which work submitted to that queue will execute"
+"Selection of the device when
+constructing a queue is achieved through a device selector abstraction and
+associated device_selector class."
+
+We'll start by creating a queue. Queues handle the direction of work to be done on accelerators. Tasks are submitted to the queue and are then offloaded to a device. The host then continues execution of the program while the device performs the task asynchronously.
+```queue q;```
+Devices such as CPU, GPU, and FPGA can be specified through the selector.
+```
+  gpu_selector selector;
+  //cpu_selector selector;
+  //default_selector selector;
+  //host_selector selector;
+  //accelerator_selector selector;
+  //fpga_selector ??? CL/sycl/intel/fpga_extensions.hpp, not available in SYCL natively???
+  
+  queue q(selector);
+```
+or ```queue q(gpu_selector{})```
+The default "q" option for queue uses the default selector, which selects the most capable device available at runtime.
+
+The device class has a function **get_info** which gives information about the device.
+
+```std::cout << "Device Name: " << q.get_device().get_info<info::device::name>() << "\n";```
+```std::cout << "Device Vendor: " << q.get_device().get_info<info::device::vendor>() << "\n";```
+
+"By creating Buffers and Accessors, DPC++ ensures that the data is available to host and device without any effort on your part. DPC++ also allows you explicit control over data movement to achieve best peformance."
+
+CUSTOM DEVICE SELECTION:
+The default device selectors such as gpu_selector will select one of the available devices in the class. This is useful to get development moving quickly, but in most applications, you will want to select specific devices for specific tasks.
+All device selectors are derived from the device_selector base class:
+```
+virtual int operator()(const device &dev) const {
+; /* Device selection logic */
+}
+```
+
+operator() is run on each available device and returns an integer score to determine which device should be selected. The device that returns the highest value is selected. Devices which return negative values will never be chosen.
+
+The user is free to define whatever logic they want to determine this integer score, allowing for an arbitrarily complex selection process.
+
+One simple way to select a particular device is to search for particular strings within the device name or vendor information. For example:
+
+```
+class my_selector : public device_selector {
+  public:
+    int operator()(const device &dev) const override {
+      if (
+        dev.get_info<info::device::name>().find("Arria")
+          != std::string::npos &&
+        dev.get_info<info::device::vendor>().find("Intel")
+          != std::string::npos) {
+      return 1;
+    }
+      return -1;
+    }
+};
+```
+
+Such a simple selection method will be sufficient for our purposes, but selection logic can be arbitrarily complex.
+
+
+DEVICE WORK
+See task graph: pp 48 (work dependencies)
+
+All mechanisms used to submit work to a device are members of the **handler** class or the **queue** class (??).
+Work is submitted to devices in the form of command groups. Command groups include:
+1. exactly one action (and no more), which is either device code submitted for execution or manual memory operations such as **copy**.
+2. Host code that defines dependences which restrict when asynchronous execution of the submitted work can begin. For example: creation of accessors or buffers
+
+ See pp 54 for table of handler member functions
+
+
+Example of submitting work to a queue, Q:
+```
+Q.submit([&](handler& h) {			// function called on host
+  accessor acc{B, h};				// host code defining accessor, setting up dependencies
+
+  h.parallel_for(size , [=](auto& idx) {
+    acc[idx] = idx;				// Device code to be run when runtime dependencies are met
+  });
+});
+```
+
+
+DATA MANAGEMENT:
+Running heterogeneous computing systems efficiently requires careful handling of data. It is essential for data to be available for accelerator execution as promptly as possible, as any time the device sits idle is a great deal of potential performance wasted.
+
+There are two methods for managing data in DPC++: Unified Shared Memory (USM) and buffers.
+
+Device code requires data as an input and will return its own data as an output. Devices also often have their own memory which is distinct from the host's, and cannot be directly accessed by the host. An important question is how to safely and efficiently handle the storage and movement of data between the host and discrete devices. Synchronization and coherency are potential problems
+
+The compiler can handle data management on its own, but for best performance, it is often required for the programmer to define the movement and storage of data manually.
+
+Accesses to directly-attached memory are __local__ accesses. Accesses to another device's memory are __remote__ accesses. Local accesses are much faster than remote accesses, so it is typically desirable for a device to utilize its local memory for assigned computation. This may require manual movement of data between different memory pools to insure it is within the device's local scope.
+
