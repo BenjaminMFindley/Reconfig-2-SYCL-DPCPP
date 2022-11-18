@@ -1,0 +1,43 @@
+Devcloud Notes
+
+Devcloud access instructions
+https://github.com/intel/FPGA-Devcloud/tree/master/main/
+
+Ssh setup for Mac/Linux
+https://devcloud.intel.com/oneapi/documentation/connect-with-ssh-linux-macos/
+
+View currently available nodes (can change "arria10" to "gen9" for gpu or other criteria)
+pbsnodes | grep -B 1 -A 8 "state = free" | grep -B 4 -A 4 arria10
+
+Source the script to help select a node. Launch with devcloud_login. Choose Arria PAC.
+source /data/intel_fpga/devcloudLoginToolSetup.sh
+
+Must run this to initialize oneAPI variables and use dpcpp
+source /opt/intel/inteloneapi/setvars.sh > /dev/null 2>&1
+
+Transfer files with SCP to/from DevCloud (run in local terminal):
+scp /path/to/local/file devcloud:/path/to/remote/directory
+scp devcloud:/path/to/remote/file /path/to/local/directory
+
+Get machine info for Node:
+cat /sys/devices/virtual/dmi/id/product_name
+cat /etc/os-release
+
+
+// select offload device
+
+// CPU (host)
+//cl::sycl::cpu_selector deviceSelectorCPU;
+
+// GPU
+//cl::sycl::gpu_selector deviceSelector;
+
+// FPGA 
+//cl::sycl::ext::intel::fpga_selector deviceSelector;
+
+// FPGA emulator 
+//cl::sycl::ext::intel::fpga_emulator_selector deviceSelector;
+
+// Block off SYCL code in braces {} so all work will complete before going out of scope.
+// SYCL takes control of input vectors to make buffers, and the braces ensure buffers
+// retain control until we are done working with the data
