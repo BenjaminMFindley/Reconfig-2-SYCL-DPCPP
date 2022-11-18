@@ -29,7 +29,6 @@ https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-down
 -----------------------------------------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------------------------------------
 DevCloud can be also used to compile on Intel CPUs, GPUs, and FPGAs
-
 https://github.com/intel/FPGA-Devcloud/tree/master/main/Devcloud_Access_Instructions#devcloud-access-instructions
 
 -Requries SSH client (recommend MobaXterm) and DevCloud access
