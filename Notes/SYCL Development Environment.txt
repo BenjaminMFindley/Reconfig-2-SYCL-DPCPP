@@ -1,0 +1,31 @@
+The following two installs allow for quick development/debugging. The user can compile SYCL code on their local machine and offload computations to their CPU. 
+
+Also supported is the Intel FPGA_emulator "device," however it does NOT predict timing nor undefined behavior
+
+Some analysis can be done locally with VTune
+
+GPU offloading is only supported for Intel brand GPU (Nvidia GPU is supported only on Linux via additional extension, see https://codeplay.com/solutions/oneapi/for-cuda/) 
+
+Additional FPGA simulation options (e.g. Questa) are supported on the local machine, but only with licenses for Quartus Pro.
+
+1----------------------------------------------------------------------------------------------------------------------------------
+IDE - Visual Studio Community
+https://visualstudio.microsoft.com/vs/community/
+
+Provides automatic integration with oneAPI and dpcpp compiler. Typical installations require 20-50 GB of free space
+https://learn.microsoft.com/en-us/visualstudio/releases/2022/system-requirements
+
+2----------------------------------------------------------------------------------------------------------------------------------
+Compiler - oneAPI Base Toolkit
+https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html
+
+Includes DPC++/C++ compiler, library, compatibility tool, fpga add-ons, and VTune performance profiler. Recommend to download the offline installer. Choose Visual Studio integration during install. Download size is 3.7 GB.
+
+-----------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------------
+DevCloud can be also used to compile on Intel CPUs, GPUs, and FPGAs
+
+https://github.com/intel/FPGA-Devcloud/tree/master/main/Devcloud_Access_Instructions#devcloud-access-instructions
+
+Requries SSH client (recommend MobaXterm) and DevCloud access. Availability of compute nodes is volatile. Can submit batches to the scheduler, but wait time can be unpredictable.
