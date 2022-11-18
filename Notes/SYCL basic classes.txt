@@ -1,0 +1,84 @@
+using namespace sycl? versus explicit cl::sycl::class
+size_t N = 1024;
+
+SYCL classes
+
+--------------------------------------------------------------------------------------------------------------------
+property_list - 
+storage class for different properties
+
+example:
+auto propertyList = property::queue::enable_profiling();
+queue deviceQueue(deviceSelector, propertyList);
+
+--------------------------------------------------------------------------------------------------------------------
+queue - 
+connect host program to single device. Programs submit tasks to device via the queue, and may also monitor the queue for device completion/errors
+
+example:
+queue deviceQueue(deviceSelector, propertyList);
+deviceQueue.submit([&](handler& queueHandler) {
+	// kernel code goes here
+});
+
+--------------------------------------------------------------------------------------------------------------------
+range - 
+defines dimensions of data / work in a kernel
+
+example:
+range<2> numItems{N,N};
+...
+buffer<double, 2> dataBuffer(inVector.data(), numItems);
+...
+queueHandler.parallel_for(numItems, [=](id<2> index) {
+	...
+});
+
+--------------------------------------------------------------------------------------------------------------------
+buffer - 
+data container that gives shared read/write access between host/device. buffer will block the data source while SYCL is running code, and then return completed data and control after SYCL code goes out of scope (buffer destructer called). Therefore, it is important to block off SYCL code with braces {} when writing code for single source, or alternatively separate kernel code in another function/file. 
+
+example:
+std::vector<double> dataVector(N,N);
+
+{
+	buffer<double, 2> dataBuffer(inVector.data(), numItems);
+	...
+	dataBuffer.get_access<access::mode::read>();
+	...
+
+} // data/control released from buffer and written back to data source (dataVector)
+
+--------------------------------------------------------------------------------------------------------------------
+handler - 
+defines the interface to invoke kernels by submitting commands to a queue.
+
+example:
+deviceQueue.submit([&](handler& queueHandler) {
+	// kernel code goes here
+});
+
+--------------------------------------------------------------------------------------------------------------------
+accessor - 
+provides access to the data managed by a buffer or image, or to shared local memory allocated by the runtime. Set access mode on buffer to read/write.
+
+example:
+deviceQueue.submit([&](handler& queueHandler) {
+	auto dataAccessor = dataBuffer.get_access<access::mode::read>(queueHandler);
+	...
+});
+
+--------------------------------------------------------------------------------------------------------------------
+event - 
+allow for the scheduling of kernels and to capture status of the kernel (such as timing analysis)
+
+example:
+auto queueEvent = deviceQueue.submit([&](handler& queueHandler) { 
+	// kernel code goes here
+});
+
+auto kernel_end = queueEvent.get_profiling_info<info::event_profiling::command_end>();
+auto kernel_start = queueEvent.get_profiling_info<info::event_profiling::command_start>();
+auto kernel_duration = (kernel_end - kernel_start);
+
+--------------------------------------------------------------------------------------------------------------------
