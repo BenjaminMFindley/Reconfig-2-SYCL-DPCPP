@@ -115,7 +115,78 @@ There are two methods for managing data in DPC++: Unified Shared Memory (USM) an
 
 Device code requires data as an input and will return its own data as an output. Devices also often have their own memory which is distinct from the host's, and cannot be directly accessed by the host. An important question is how to safely and efficiently handle the storage and movement of data between the host and discrete devices. Synchronization and coherency are potential problems
 
-The compiler can handle data management on its own, but for best performance, it is often required for the programmer to define the movement and storage of data manually.
-
 Accesses to directly-attached memory are __local__ accesses. Accesses to another device's memory are __remote__ accesses. Local accesses are much faster than remote accesses, so it is typically desirable for a device to utilize its local memory for assigned computation. This may require manual movement of data between different memory pools to insure it is within the device's local scope.
 
+Memory management can either be explicit or implicit. Data may be explicitly copied within the program itself, or implicitly by the runtime.
+
+The compiler can handle data management on its own, but for best performance, it is often required for the programmer to define the movement and storage of data manually. For example, one effective strategy is to transfer data while the device (? not CPU?) is busy with computation.
+However, explicit data management can also be very time consuming and error prone. You will likely only want to explicitly manage memory accesses that are of the most importance to performance, if at all.
+
+Implicit memory management will assure that all data required by the kernel is transferred to the appropriate location before execution but does not allow control of when this transfer occurs, leading to potentional loss in performance.
+
+USM, BUFFERS, IMAGES:
+USM is a pointed-based memory management system, similar to C/C++.
+Buffers are an abstraction of memory implemented as 1-3D arrays and are accessible by both host and device. Access of a buffer must be done through **accessor** objects.
+Images are a special implementation of buffers optimized for use in image processing. They support special image formats as well as reading of images using sampelr objects (whatever that means).
+The interface for buffers and images are mostly the same, so only buffers will be covered.
+
+USM:
+USM is pointer-based and works similar to **malloc** or **new** in C/C++. USM defines a unified virtual address space that is shared between host and devices. A pointer is valid both on the host and any devices, so no translation between them is necessary.
+USM defines three types of allocations: device, host, and shared. All allocations are performed by the host. (See Figure 3-3, pg 67 in book for table of characteristics)
+Device allocations are located on device-attached memory and are only accessible via device. Data must be copied explicitly in order to move between host and device memory.
+Both host and shared allocations are accessible by either host or device. Host allocations are located in host memory. Data accessed on host memory by devices do not transfer into local device memory. The data is instead sent via bus, such as PCI-E (or AXI?).
+Shared memory is like host memory in that it can be accessed by both host and device, however, shared memory can migrate between host and device-local memory. This allows for much faster execution by the device after the migration has completed. This migration occurs automatically via the runtime and lower-level drivers.
+
+Device allocations are explicit and are accomplished via the memcpy() function, which is part of the queue and handler classes.
+Any instances of malloc_device must be explicitly copied to the device inside kernel code using the memcpy() function, whereas malloc_host and malloc_shared are implicit and migration is handled by the runtime, with no explicit migration required by the programmer. (See Figures 3-4 and 3-5, pp 69-70)
+
+BUFFERS:
+Buffers are a data abstraction of a certain C++ type. Buffer elements can be scalar data types (int, float, double), vectors, or another user-defined class/structure. "Data structures in buffers must be C++ trivially copyable, which means that an object can be safely copied byte by byte where copy constructors do not need to be invoked."
+As buffers represent data objects rather than specific memory addresses, they cannot be accessed like regular C++ arrays "". A single buffer object may be distributed between multiple discrete memory locations on different devices. For this reason, accessor objects are required to read from and write to buffers.
+
+An empty buffer may be constructed by specifyng a range for the size of the buffer. Data must later be initialized inside the buffer before it can be read from.
+Alternatively, existing host data may be used to initialize a new buffer by invoking one of the constructors that takes a pointer to an existing host allocation (or "a set of InputIterators, or a container that has certain properties").
+Buffers may also be created from an existing cl_mem object if using SYCL OpenCL compatibility features.
+
+ACCESSORS:
+Accessors are the only way in which the host or device may read from or write to buffers. Accessors can be instantiated with either read, write, or read_write access modes. read_write is the default.
+Using appropriate access modes when creating accessors is important as it provides implicit information used to help the runtime manage memory. For example, creating an accessor with the read mode tells the runtime that it does not need to copy memory back to the host, as the device has not changed it.
+Appropriate use of access modes will help the runtime optimize kernel scheduling and data migration.
+
+!!!Maybe add some slides about task graphs/data ordering
+
+Queues may be instantiated with the "in-order" property, which will result in the queue executing its tasks in the order in which they are submitted.
+```queue Q{property::queue::in_order()};```
+This is simple and intuitive, and makes it easy to organize tasks by dependency, but not allowing the runtime the flexibility to run tasks in whichever order is more efficient can result in reduced performance.
+By default, queues are considered "out-of-order", meaning they do not necesszrily run tasks in order of submission. This means that we must specify any dependencies between tasks ourselves to ensure correct functionality. This is done using "command groups".
+
+COMMAND GROUPS:
+"A command group is an object that specifies a task and its dependences. Command groups are typically written as C++ lambdas passed as an argument to the submit() method of a queue object. This lambda’s only parameter is a reference to a handler object. The handler object is used inside the command group to specify actions, create accessors, and specify dependences."
+
+Dependencies can either be explicit or implicit. Explicit dependencies refer to dependencies between computations. This form of dependency is most relevant to code utilizing USM for data management and are specified using events.
+Implicit dependencies refer to depdendencies between data accesses. This form of dependency is used in code that utilizes buffers for data management, as depdendencies are specified through accessors.
+
+EVENTS (COMPUTATIONAL DEPENDENCIES):
+The queue's submit() function returns an event object. This event object can be captured and referenced for other purposes such as wait() or depends_on().
+depends_on() is a handler function and can be used to specify events on which the current operation depends. depends_on() takes an event or vector of events and will wait until all specified events have finished before continuing execution on the device.
+```
+// Task A
+auto eventA = Q.submit([&](handler &h) {
+h.parallel_for(N, [=](id<1> i) { /*...*/ });
+});
+// Task B
+auto eventB = Q.submit([&](handler &h) {
+h.depends_on(eventA);
+h.parallel_for(N, [=](id<1> i) { /*...*/ }); // Will not execute until eventA has finished
+});
+```
+
+DATA DEPENDENCIES: Data dependencies exist in one of three relationships.
+Read-after-write: When task B must wait for task A to write data before it can read.
+Write-after-read: When task B must wait for task A to read data before it can write.
+Write-after-write: When task B must wait for task A to write data before it can write.
+
+These relationships are specified implicitly by accessor access modes and task ordering. If two different tasks have accessors for the same data, whichever task is submitted first will be executed first, and an implicit dependency is created based on the types of access.
+(See Figure 3-13, pg 81 for code example. Also 3-15, pg 84)
+
+NOW ON: Chapter 4: Expressing Parallelism, pg 91
