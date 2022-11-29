@@ -4,7 +4,7 @@ Repository for organizing efforts in making SYCL/DPC++ curriculum for the Reconf
 
 ## Study Order
 * [Intro to SYCL Slides](https://github.com/BenjaminMFindley/Reconfig-2-SYCL-DPCPP/blob/main/Slides/SYCL%20intro.pptx)
-* [Vector Addition Example](https://github.com/BenjaminMFindley/Reconfig-2-SYCL-DPCPP/blob/main/Examples/vector_addition.ipynb)
+* [Vector Addition Example](https://github.com/BenjaminMFindley/Reconfig-2-SYCL-DPCPP/tree/main/Examples/vector_addition)
 * [More Slides](https://github.com/BenjaminMFindley/Reconfig-2-SYCL-DPCPP/tree/main/Slides)
 * [More Examples](https://github.com/BenjaminMFindley/Reconfig-2-SYCL-DPCPP/tree/main/Examples)
 
