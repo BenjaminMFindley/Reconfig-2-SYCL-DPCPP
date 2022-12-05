@@ -1,6 +1,6 @@
 #include <CL/sycl.hpp>
 
-#define VECTOR_SIZE 1000
+#define VECTOR_SIZE 1024
 
 int main(int argc, char* argv[]) {
 
@@ -21,51 +21,51 @@ int main(int argc, char* argv[]) {
 	// create the queue using default device
 	cl::sycl::queue deviceQueue(cl::sycl::default_selector{});
 
-	// allocate memory on the device via the queue
-	// malloc_device and malloc_host are used for explicit data movement
-	// alternatively, malloc_shared could be used for implicit data movement, 
-	// requiring no extra effort from the programmer
+	// allocate memory on the device with malloc_device by specifying type, size, and queue
+	// malloc_device is used for explicit data management
+	// malloc_shared and malloc host can be used for implicit data management 
 	auto in1Device = cl::sycl::malloc_device<int>(VECTOR_SIZE, deviceQueue);
 	auto in2Device = cl::sycl::malloc_device<int>(VECTOR_SIZE, deviceQueue);
 	auto outDevice = cl::sycl::malloc_device<int>(VECTOR_SIZE, deviceQueue);
-
-	// create a range object for the parallel_for kernel
-	cl::sycl::range<1> itemRange{ in1Host.size() };
 	
+	// submit work to the queue by passing in a handler
+	// the handler defines the interface to invoke kernels by submitting commands to a queue
 	deviceQueue.submit([&](cl::sycl::handler& queueHandler) {
-		// copy input data to the device
+		// using the handler, call memcpy, passing in memory destination, source, and size
 		queueHandler.memcpy(in1Device, in1Host.data(), VECTOR_SIZE * sizeof(int));
 	});
 
+	// copy second input vector
 	deviceQueue.submit([&](cl::sycl::handler& queueHandler) {
-		// copy input data to the device
 		queueHandler.memcpy(in2Device, in2Host.data(), VECTOR_SIZE * sizeof(int));
 	});
 
+	// calls to queues and handlers may execute asynchropnously
 	// tell the queue to wait for the previous tasks to complete before continuing
 	deviceQueue.wait();
 
 	// alternatively, we can capture queue information in an event, and use that event
 	// to state dependecency in the queue via the handler
 	auto evaluationEvent = deviceQueue.submit([&](cl::sycl::handler& queueHandler) {
+		
 		// perform computation using parallel_for, passing in range and operation
-		queueHandler.parallel_for(itemRange, [=](cl::sycl::id<1> i) {
+		queueHandler.parallel_for(cl::sycl::range<1> { in1Host.size() }, [=](cl::sycl::id<1> i) {
 			outDevice[i] = in1Device[i] + in2Device[i];
 		});
 	});
 	
 	deviceQueue.submit([&](cl::sycl::handler& queueHandler) {
-		// state the dependency in the kernel using event
+		// state the dependency explicitly in the kernel using event information
 		queueHandler.depends_on(evaluationEvent);
 
 		// copy data back to host
 		queueHandler.memcpy(outHost.data(), outDevice, VECTOR_SIZE * sizeof(int));
 	});
 
-	// wait until copy is done before accessing the data again on the host
+	// tell the queue to wait until all previous task have completed
 	deviceQueue.wait();
 	
-	// when using USM, it is important to free the memory we have allocated
+	// free the memory we allocated by passing in the device memory and the queue
 	cl::sycl::free(in1Device, deviceQueue);
 	cl::sycl::free(in2Device, deviceQueue);
 	cl::sycl::free(outDevice, deviceQueue);	
