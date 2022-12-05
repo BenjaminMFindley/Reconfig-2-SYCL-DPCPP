@@ -40,6 +40,9 @@ int main(int argc, char* argv[]) {
 		});
 
 	});
+	
+	// tell queue to wait until operations are finished before we read the results
+	deviceQueue.wait();
 
 	std::cout << "Operation complete:\n"
 		<< "[" << in1.at(0) << "] + [" << in2.at(0) << "] = [" << out.at(0) << "]\n"
