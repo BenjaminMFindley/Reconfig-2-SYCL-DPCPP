@@ -29,6 +29,10 @@ int main(int argc, char* argv[]) {
 
 		// perform computation using parallel_for, passing in range and operation
 
+
+	// tell queue to wait until operations are finished before we read the results
+
+	
 	std::cout << "Operation complete:\n"
 		<< "[" << in1.at(0) << "] + [" << in2.at(0) << "] = [" << out.at(0) << "]\n"
 		<< "[" << in1.at(1) << "] + [" << in2.at(1) << "] = [" << out.at(1) << "]\n"
