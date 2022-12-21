@@ -14,10 +14,13 @@ Repository for organizing efforts in making SYCL/DPC++ curriculum for the Reconf
 * [oneAPI Base Toolkit](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html)
 * [(optional) Intel DevCloud Setup Instructions](https://github.com/intel/FPGA-Devcloud/tree/master/main/Devcloud_Access_Instructions#devcloud-access-instructions)
 
-## Suggested eBook
+## Suggested Reading
+* [SYCL Technical Specification](https://registry.khronos.org/SYCL/)
 * [Data Parallel C++: Mastering DPC++ for Programming of Heterogeneous Systems using C++ and SYCL](https://sycl.tech) 
 
 ## Additional Resources
+
+
 
 <details>
 <summary>Guided Workshops</summary>
