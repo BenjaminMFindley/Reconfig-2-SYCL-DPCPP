@@ -14,12 +14,19 @@ Repository for organizing efforts in making SYCL/DPC++ curriculum for the Reconf
 * [oneAPI Base Toolkit](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html)
 * [(optional) Intel DevCloud Setup Instructions](https://github.com/intel/FPGA-Devcloud/tree/master/main/Devcloud_Access_Instructions#devcloud-access-instructions)
 
-## Suggested Reading
-* [SYCL Technical Specification](https://registry.khronos.org/SYCL/)
+## Suggested eBook
 * [Data Parallel C++: Mastering DPC++ for Programming of Heterogeneous Systems using C++ and SYCL](https://sycl.tech) 
 
 ## Additional Resources
 
+<details>
+<summary>SYCL Vendor Documentation</summary>
+  
+* [Overview](https://www.khronos.org/api/index_2017/sycl)
+* [Quick Reference](https://www.khronos.org/files/sycl/sycl-2020-reference-guide.pdf)
+* [Technical Specification](https://registry.khronos.org/SYCL/)
+
+</details>
 
 
 <details>
@@ -59,5 +66,14 @@ Repository for organizing efforts in making SYCL/DPC++ curriculum for the Reconf
 * [Intel SYCL Tutorial Playlist (2020)](https://youtube.com/playlist?list=PL46sP9LM8Gsxaq-yNQTblpj63Kn10jMAf)
 * [IWOCL SYCL Tutorial Playlist (2020)](https://www.iwocl.org/iwocl-2020/conference-program/)
 * [CppCon SYCL Intro (2018)](https://www.youtube.com/watch?v=miqZS6aS9K0)
+
+</details>
+
+<details>
+<summary>OpenCL Vendor Documentation</summary>
+  
+* [Overview](https://www.khronos.org/opencl/)
+* [Quick Reference](https://www.khronos.org/files/opencl30-reference-guide.pdf)
+* [Technical Specification](https://www.khronos.org/registry/OpenCL/)
 
 </details>
