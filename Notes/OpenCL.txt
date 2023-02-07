@@ -1,0 +1,31 @@
+WHAT IS OPENCL?
+OpenCL is a cross-platform programming framework for heterogenous parallel computing. OpenCL abstracts lower-level hardware functions and provides models for memory and execution. This abstraction allows for the same code to be used across different devices and vendors as well as giving the ability to utilize different accelerators without needing to use vendor-specific languages.
+
+OPENCL ARCHITECTURE:
+The OpenCL standard defines a single Host which controls multiple Compute Devices, such as CPUs, GPUs, and FPGAs. Each Compute Device consists of one or more Compute Units which themselves contain Processing Elements. "At the lowest level, these processing elements all execute OpenCL “Kernels”"
+
+Different vendors may define their Compute Units differently. For Nvidia GPUs, they are referred to as "CUDA cores", and AMD GPUs contain "SIMD Engines"(?).
+
+Compute Units may not be general purpose but instead specialized for specific tasks. For example, something Nvidia refers to in marketing as a "CUDA core" may be capable of only floating point operations.
+
+OPENCL EXECUTION MODEL:
+The Host uses the OpenCL API to manage and interface with compute devices. The host submits work to the processing elements (? directly? to compute devices?) in the form of "Kernels", which are written in OpenCL C - an extension of C99 (or C++ for OpenCL which is backwards compatible with OpenCL C, but also includes most of C++17). After kernels are submitted to the compute devices, they will execute in parallel with the host process. Each item of execution is referred to as a "work-item" (CUDA threads), which are grouped together to form "work-groups" (thread blocks). 
+
+Basic Pipeline for GPGPU OpenCL App:
+1. CPU defines a computation domain over some some region of memory. Each index of this N-dimensional domain is a work-item and each work-item executes the same kernel.
+2. The Host groups these work-items into one or more work-groups. Each work-item in a given work-group executes concurrently within a compute unit. Work groups share some local memory. Each work-group is placed onto a work-queue.
+3. Memory is loaded onto the global GPU RAM and each work-group in the work-queue is executed.
+4. "On NVIDIA hardware the multiprocessor will execute 32 threads at once (which they call a “warp group”), if the workgroup contains more threads than this they will be serialized, which has obvious implications on the consistency of local memory."
+
+Each processing element computes code sequentially. 
+
+OPENCL MEMORY MODEL:
+Work-items in a work-group can communicate through a local memory scope, but items between work-groups cannot be synchronized.
+something something memory/work group/event dependencies
+
+
+
+
+Compute Units are like cores in a processor
+Processing Elements are units like ALUs. Work items are scheduled to run on processing elements. One work item per processing element at a time
+
