@@ -27,8 +27,8 @@ Find suitable node (e.g. with gen9 gpu):
 Login with interactive shell:   
 `qsub -I -l nodes=s001-n234:ppn=2`
 
-* Compile:   
+Compile:   
 `icpx -fsycl input_file -o output_file`
    
-* Run:   
+Run:   
 `./output_file`  
