@@ -18,3 +18,17 @@ These programs provide a basic introduction to SYCL and DPC++.
 * [vector_addition_with_timing.cpp](https://github.com/BenjaminMFindley/Reconfig-2-SYCL-DPCPP/blob/main/Examples/vector_addition/vector_addition_with_timing.cpp)
   * Adds device selector to choose offload device
   * Provides timing comparison between device (SYCL) and host (non-SYCL)
+  
+## Devcloud instructions
+
+Find suitable node (e.g. with gen9 gpu):  
+`pbsnodes | grep -B 1 -A 8 "state = free" | grep -B 4 -A 4 gen9`
+
+Login with interactive shell:   
+`qsub -I -l nodes=s001-n234:ppn=2`
+
+* Compile:   
+`icpx -fsycl input_file -o output_file`
+   
+* Run:   
+`./output_file`  
