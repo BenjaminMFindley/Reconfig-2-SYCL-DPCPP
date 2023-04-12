@@ -11,7 +11,7 @@
 
 #include <CL/sycl.hpp>
 
-#define VECTOR_SIZE 1000
+const int VECTOR_SIZE = 1000;
 
 class vector_add;
 
@@ -21,7 +21,7 @@ int main(int argc, char* argv[]) {
 	    << "Vector size: " << VECTOR_SIZE << std::endl;
 
   // Declare the input and output vectors.
-  // The _h suffix is used to signifiy that these variables are stored on the host.
+  // The _h suffix is used to signify that these variables are stored on the host.
   std::vector<int> in1_h(VECTOR_SIZE);
   std::vector<int> in2_h(VECTOR_SIZE);
   std::vector<int> out_h(VECTOR_SIZE);
@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
   std::vector<int> correct_out(VECTOR_SIZE);
 
   // Initialize vectors.
-  for (size_t i=0; i<VECTOR_SIZE; i++) {
+  for (size_t i=0; i < VECTOR_SIZE; i++) {
     in1_h[i] = i;
     in2_h[i] = i;
     out_h[i] = 0;
@@ -50,6 +50,7 @@ int main(int argc, char* argv[]) {
   // The new way is the following:
   // cl::sycl::queue deviceQueue(cl::sycl::default_selector_v);
 
+  // Next, we create a separate scope for all device code.
   {
     // Declare bufferes that handle transfers to/from the device(s).
     // The buffer class has 2 template parameters: type (int) and number of dimenstions (1)
@@ -60,7 +61,7 @@ int main(int argc, char* argv[]) {
     cl::sycl::buffer<int, 1> in1Buffer {in1_h.data(), cl::sycl::range<1>(in1_h.size()) };
     cl::sycl::buffer<int, 1> in2Buffer {in2_h.data(), cl::sycl::range<1>(in2_h.size()) };
     cl::sycl::buffer<int, 1> outBuffer {out_h.data(), cl::sycl::range<1>(in2_h.size()) };
-
+    
     // Next, we tell the device what to do by sending it a function via the queue's
     // submit function. The submit method takes a single parameter, which is specified here
     // using a lambda (which is the common convention). The lambda function is passed a
@@ -73,9 +74,11 @@ int main(int argc, char* argv[]) {
 	// To allow the device to access the buffers, we need to create "accessors".
 	// Accessors can be read_only, write_only, or read_write. Here, we only use
 	// read_only for the inputs, and write_only for the outputs.
-	cl::sycl::accessor in1Accessor(in1Buffer, queueHandler, cl::sycl::read_only);
-	cl::sycl::accessor in2Accessor(in2Buffer, queueHandler, cl::sycl::read_only);
-	cl::sycl::accessor outAccessor(outBuffer, queueHandler, cl::sycl::write_only);
+	// The _d suffix is a convention used to signify that the the corresponding
+	// memory acceses are on the device, as opposed to the host.
+	cl::sycl::accessor in1_d(in1Buffer, queueHandler, cl::sycl::read_only);
+	cl::sycl::accessor in2_d(in2Buffer, queueHandler, cl::sycl::read_only);
+	cl::sycl::accessor out_d(outBuffer, queueHandler, cl::sycl::write_only);
 
 	// The following code "vectorizes" the original sequential loop.
 	// The parallel_for has a template parameter specifying a kernel name, and two
@@ -91,7 +94,7 @@ int main(int argc, char* argv[]) {
 	// individual thread/work-item to identify itself. Without this id, each thread
 	// would not know what memory to access.       
 	queueHandler.parallel_for<class vector_add>(cl::sycl::range<1> { in1_h.size() }, [=](cl::sycl::id<1> i) {
-	    outAccessor[i] = in1Accessor[i] + in2Accessor[i];
+	    out_d[i] = in1_d[i] + in2_d[i];
 	  });
 
       });
@@ -105,7 +108,8 @@ int main(int argc, char* argv[]) {
 	    << "[" << in1_h[0] << "] + [" << in2_h[0] << "] = [" << out_h[0] << "]\n"
 	    << "[" << in1_h[1] << "] + [" << in2_h[1] << "] = [" << out_h[1] << "]\n"
 	    << "...\n"
-	    << "[" << in1_h[VECTOR_SIZE - 1] << "] + [" << in2_h[VECTOR_SIZE - 1] << "] = [" << out_h[VECTOR_SIZE - 1] << "]\n";
+	    << "[" << in1_h[VECTOR_SIZE - 1] << "] + [" << in2_h[VECTOR_SIZE - 1] << "] = [" << out_h[VECTOR_SIZE - 1] << "]\n"
+	    << std::endl;
 
   if (out_h == correct_out) {
     std::cout << "SUCCESS!" << std::endl;
