@@ -13,6 +13,9 @@
 // This example teaches the basics of SYCL, while including a common bug that we
 // will fix in the next example.
 
+#include <iostream>
+#include <vector>
+
 #include <CL/sycl.hpp>
 
 const int VECTOR_SIZE = 1000;
@@ -43,16 +46,18 @@ int main(int argc, char* argv[]) {
 
   // Select a device to run the code and create a queue for sending commands.
   // Here we use the default_selector, which chooses a "default" device. The
-  // default is usually a GPU if the host has access to one.
-  cl::sycl::queue queue(cl::sycl::default_selector{});
+  // default is usually a GPU if the host has access to one.  
+  cl::sycl::queue queue(cl::sycl::default_selector_v);
 
-  // NOTE: this could also be done in separate steps:
+  // The previous line is new to SYCL version 2023, so if you are using an older
+  // version, you might get errors unless you do the following instead from the
+  // 2020 specification. This technique is deprecated in 2023, so you will likely
+  // get warnings using this older approach on newer tools.
+  //cl::sycl::queue queue(cl::sycl::default_selector{});
+
+  // Alternatively, you can separate the select and queue creation:
   // cl::sycl::default_selector selector;
   // cl::sycl::queue queue(selector);
-
-  // NOTE: This syntax is deprecated in 2023 SYCL, so you may get warnings.
-  // The new way is the following:
-  // cl::sycl::queue queue(cl::sycl::default_selector_v);
 
   // Declare bufferes that handle transfers to/from the device(s).
   // The buffer class has 2 template parameters: type (int) and number of dimenstions (1)

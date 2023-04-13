@@ -13,6 +13,9 @@
 // In this version of the code, we shorten all the code a little bit using std as
 // a default namespace, and using sycl:: instead of cl::sycl.
 
+#include <iostream>
+#include <vector>
+
 #include <CL/sycl.hpp>
 
 // CHANGES FROM PREVIOUS CODE
@@ -51,7 +54,7 @@ int main(int argc, char* argv[]) {
   // device code in a try block to catch exceptions. This also creates a new scope
   // while enabling exception handling.
   try {
-    sycl::queue queue(sycl::default_selector{});
+    sycl::queue queue(sycl::default_selector_v);
     
     sycl::buffer<int, 1> in1_buf {in1_h.data(), sycl::range<1>(in1_h.size()) };
     sycl::buffer<int, 1> in2_buf {in2_h.data(), sycl::range<1>(in2_h.size()) };

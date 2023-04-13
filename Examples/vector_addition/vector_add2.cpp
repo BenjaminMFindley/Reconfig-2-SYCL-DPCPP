@@ -14,6 +14,9 @@
 // "synchronous" errors, which are errors that occur on the host. Catching errors
 // that occur on the device will be explained in a later example.
 
+#include <iostream>
+#include <vector>
+
 #include <CL/sycl.hpp>
 
 const int VECTOR_SIZE = 1000;
@@ -45,7 +48,7 @@ int main(int argc, char* argv[]) {
   // To catch errors that occur during device execution (i.e. asynchronous errors),
   // we need additional code that will be explained in a later example.
   try {
-    cl::sycl::queue queue(cl::sycl::default_selector{});
+    cl::sycl::queue queue(cl::sycl::default_selector_v);
     
     cl::sycl::buffer<int, 1> in1_buf {in1_h.data(), cl::sycl::range<1>(in1_h.size()) };
     cl::sycl::buffer<int, 1> in2_buf {in2_h.data(), cl::sycl::range<1>(in2_h.size()) };

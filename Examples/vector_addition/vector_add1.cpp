@@ -14,6 +14,9 @@
 
 #include <CL/sycl.hpp>
 
+#include <iostream>
+#include <vector>
+
 const int VECTOR_SIZE = 1000;
 
 class vector_add;
@@ -35,7 +38,7 @@ int main(int argc, char* argv[]) {
     correct_out[i] = i + i;
   }
 
-  cl::sycl::queue queue(cl::sycl::default_selector{});
+  cl::sycl::queue queue(cl::sycl::default_selector_v);
 
   // CHANGES FROM PREVIOUS EXAMPLE
   // To fix the bug from the previous version where the output was always 0,
