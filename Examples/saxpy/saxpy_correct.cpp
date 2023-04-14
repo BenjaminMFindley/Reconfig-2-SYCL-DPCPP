@@ -98,8 +98,6 @@ int main(int argc, char* argv[]) {
     return 1;
   }
   
-  std::cout << "Operation complete:\n";
-
   // CHANGES FROM PREVIOUS CODE:
   // Instead of just comparing the output vectors for equality, we iterate over them
   // and see if each pair of outputs is sufficiently equal.
