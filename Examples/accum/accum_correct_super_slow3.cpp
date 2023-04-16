@@ -68,7 +68,11 @@ int main(int argc, char* argv[]) {
        for (auto ex : el) { std::rethrow_exception(ex); }
     } );
    
-    for (int size = VECTOR_SIZE; size > 1; size = ceil(size / 2.0)) {
+
+    int iteration = 0;
+    for (int size = VECTOR_SIZE; size > 1; size = ceil(size / 2.0), iteration++) {
+      int stride = pow(2, iteration);
+      //      std::cout << "Stride: " << stride << std::endl;
 
       {
 	cl::sycl::buffer<int, 1> x_buf {x_h.data(), cl::sycl::range<1>(VECTOR_SIZE) };
@@ -81,21 +85,22 @@ int main(int argc, char* argv[]) {
 
 	    handler.parallel_for<class accum>(cl::sycl::range<1> { num_work_items }, [=](cl::sycl::id<1> i) {
 
+		int base = 2*stride*i;
 		if (2*i + 1 < size)
-		  y_d[i] = x_d[2*i] + x_d[2*i+1];
+		  y_d[base] = x_d[base] + x_d[base + stride];
 		else if (2*i + 1 == size)
-		  y_d[i] = x_d[2*i];
+		  y_d[base] = x_d[base];
 	      });
 	  });
 
 	queue.wait();
       }
-      /*
-      for (int i=0; i < size; i++) {
+      
+      /*for (int i=0; i < VECTOR_SIZE; i++) {
 	std::cout << y_h[i] << std::endl;
       }
-      std::cout << std::endl;
-      */
+      std::cout << std::endl;*/
+
       x_h = y_h;
     }
   }
