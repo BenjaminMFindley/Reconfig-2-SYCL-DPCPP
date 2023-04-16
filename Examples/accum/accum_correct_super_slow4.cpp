@@ -10,6 +10,8 @@
 // for (int i=0; i < VECTOR_SIZE; i++) {
 //   accum += a[i];
 //
+// When running the example on the DevCloud, the execution time of this example
+// for 1000000000 (1 billion) inputs was 4.45s.
 
 #include <iostream>
 #include <iomanip>

@@ -1,7 +1,7 @@
 // Greg Stitt
 // University of Florida
 //
-// accum_correct_super_slow.cpp
+// accum_correct_super_slow1.cpp
 //
 // This SYCL program will create a parallel (vectorized) version of the following
 // sequential code:
@@ -11,16 +11,19 @@
 //   accum += a[i];
 //
 // The previous example had a bug that was caused by work-items overwriting
-// the inputs to other work-items due to work-items executing in an
-// unexpected order. Unfortunately, there is no way to guarantee the
-// order of execution of work-items, so instead we must transform the code
-// so that work-items cannot overwrite inputs of other work-items.
+// the inputs to other work-items due to execution in an unexpected order.
+// Unfortunately, there is no way to guarantee the order of execution of
+// work-items, so instead we must transform the code so that work-items
+// cannot overwrite inputs of other work-items.
 //
-// In this example, we accomplish this goal by adding an output array so
+// In this example, we accomplish this goal by including an output array so
 // that work-items read from an input array and write to the output array.
 //
 // The end result is a correct implementation. However, it is very slow,
 // which we improve in the next examples.
+//
+// When running the example on the DevCloud, the execution time of this example
+// for 1000000000 (1 billion) inputs was 84.85s.
 
 #include <iostream>
 #include <iomanip>
