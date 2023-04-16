@@ -39,17 +39,17 @@ int main(int argc, char* argv[]) {
   const unsigned VECTOR_SIZE = atoi(argv[1]);
   unsigned num_work_items = ceil(VECTOR_SIZE / 2.0);
 
-  std::cout << "NUM_WORK_ITMES = " << num_work_items << std::endl;
+  //std::cout << "NUM_WORK_ITMES = " << num_work_items << std::endl;
   //for (int i=VECTOR_SIZE; i > 1; i = ceil(i/2.0))
   //  std::cout << i << std::endl;
   
   
-  std::vector<float> x_h(VECTOR_SIZE);
-  float correct_out = 0;
+  std::vector<int> x_h(VECTOR_SIZE);
+  int correct_out = 0;
 
   std::random_device rd;
   std::mt19937 gen(rd());
-  std::uniform_real_distribution<> dist(-10, 10);
+  std::uniform_int_distribution<> dist(-10, 10);
 
   for (size_t i=0; i < VECTOR_SIZE; i++) {
     x_h[i] = dist(gen);
@@ -71,10 +71,10 @@ int main(int argc, char* argv[]) {
     int iteration = 0;
     for (int size = VECTOR_SIZE; size > 1; size = ceil(size / 2.0), iteration++) {
       int stride = pow(2, iteration);
-      std::cout << "Stride: " << stride << std::endl;
+      //      std::cout << "Stride: " << stride << std::endl;
 
       {
-	cl::sycl::buffer<float, 1> x_buf {x_h.data(), cl::sycl::range<1>(VECTOR_SIZE) };
+	cl::sycl::buffer<int, 1> x_buf {x_h.data(), cl::sycl::range<1>(VECTOR_SIZE) };
       
 	queue.submit([&](cl::sycl::handler& handler) {
 
