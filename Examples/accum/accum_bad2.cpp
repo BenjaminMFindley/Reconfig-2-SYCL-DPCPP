@@ -76,7 +76,7 @@ int main(int argc, char* argv[]) {
     // have finished the current iteration.
     for (int size = vector_size; size > 1; size = ceil(size / 2.0)) {
       
-      cl::sycl::buffer<int, 1> x_buf {x_h.data(), cl::sycl::range<1>(vector_size) };
+      cl::sycl::buffer<int, 1> x_buf {x_h.data(), cl::sycl::range<1>(size) };
       
       queue.submit([&](cl::sycl::handler& handler) {
 	  
