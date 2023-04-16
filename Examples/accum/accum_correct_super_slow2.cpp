@@ -45,6 +45,7 @@ int main(int argc, char* argv[]) {
   }
 
   std::chrono::time_point<std::chrono::system_clock> start_time, end_time;
+  unsigned num_work_items = ceil(vector_size / 2.0);
   std::vector<int> x_h(vector_size);
   std::vector<int> y_h(vector_size);
   int correct_out = 0;
@@ -67,23 +68,24 @@ int main(int argc, char* argv[]) {
 
     for (int size = vector_size; size > 1; size = ceil(size / 2.0)) {
 
+      
+      // CHANGES FROM PREVIOUS EXAMPLE
+      // In the previous version of the code, we copied the entire vector
+      // every iteration. However, the actual valid elements in the vector
+      // are reduced by half every iteration, so that approach transferred
+      // many elements that weren't needed. In this optimized approach,
+      // we create the buffer with the actual amount of data that will be
+      // needed. This greatly reduces communication times.
       cl::sycl::buffer<int, 1> x_buf {x_h.data(), cl::sycl::range<1>(size) };
       cl::sycl::buffer<int, 1> y_buf {y_h.data(), cl::sycl::range<1>(ceil(size/2.0)) };
-
-      // CHANGES FROM PREVIOUS EXAMPLE
-      // In this version, we optimize further by not always using the same number of
-      // work-items, which were previously calculated based on the original vector
-      // size. Since the size (the number of items to add) shrinks every iteration),
-      // we can similarly shrink the number of work-items every iteration.
-      unsigned num_work_items = ceil(size / 2.0);
       
       queue.submit([&](cl::sycl::handler& handler) {
-	  
+
 	  cl::sycl::accessor x_d(x_buf, handler, cl::sycl::read_only);
 	  cl::sycl::accessor y_d(y_buf, handler, cl::sycl::write_only);
 	  
 	  handler.parallel_for<class accum>(cl::sycl::range<1> { num_work_items }, [=](cl::sycl::id<1> i) {
-	      
+
 	      if (2*i + 1 == size)
 		y_d[i] = x_d[2*i];
 	      else if (2*i + 1 < size)
@@ -91,12 +93,9 @@ int main(int argc, char* argv[]) {
 	    });
 	});
       
-      queue.wait();      
+      queue.wait();
       y_buf.get_access<cl::sycl::access::mode::read>();
-
-      for (int i=0; i < ceil(size/2.0); i++) {
-	x_h[i] = y_h[i];
-      }
+      x_h = y_h;
     }
     
     end_time = std::chrono::system_clock::now();

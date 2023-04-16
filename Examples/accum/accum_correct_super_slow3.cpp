@@ -89,11 +89,10 @@ int main(int argc, char* argv[]) {
       y_buf.get_access<cl::sycl::access::mode::read>();
 
       // CHANGES FROM PREVIOUS EXAMPLE
-      // Previously we copied the entire output vector
-      // back to the input vector. This was very wasteful
-      // because most iterations have few valid outputs. In
-      // this version we optimize the code to only copy back
-      // the actual outputs.
+      // Previously we copied the entire output vector back to the
+      // input vector. This was very wasteful because most
+      // iterations have few valid outputs. In this version,
+      // we optimize the code to only copy back the actual outputs.
       for (int i=0; i < ceil(size/2.0); i++) {
 	x_h[i] = y_h[i];
       }
