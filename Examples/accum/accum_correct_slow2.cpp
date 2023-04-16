@@ -81,7 +81,11 @@ int main(int argc, char* argv[]) {
   }
   
   try {
-    cl::sycl::device device = cl::sycl::default_selector{}.select_device();
+    // We separate the device selection from the queue creation here
+    // because we will need the device object to query information
+    // about local memory.
+    cl::sycl::device device;
+    cl::sycl::default_selector_v(device);
     
     cl::sycl::queue queue(device, [] (sycl::exception_list el) {
 	for (auto ex : el) { std::rethrow_exception(ex); }
@@ -97,36 +101,34 @@ int main(int argc, char* argv[]) {
     // processed by each group is the work items per group * 2.
     int inputs_per_group = work_items_per_group * 2;
 
-    // Check to see if the device has local memory.
-    auto has_local_mem = device.is_host()
-      || (device.get_info<sycl::info::device::local_mem_type>()
-        != sycl::info::local_mem_type::none);
-
-    // Get the size of the local memory.
+    // Get the size of the local memory on the device.
     auto local_mem_size = device.get_info<sycl::info::device::local_mem_size>();
 
     // Check for errors with the local memory.
-    if (!has_local_mem || local_mem_size < (work_items_per_group * sizeof(int))) {
+    if (local_mem_size < (work_items_per_group * sizeof(int))) {
       throw std::runtime_error("Insufficient local memory on device.");
     }
   
     start_time = std::chrono::system_clock::now();
 
-    // TODO: Potentially optimize this by moving inside the loop and using num_global_inputs.
-    // CHECK TO SEE IF THIS IS BEING COPIED MULTIPLE TIMES.
+    // This could potentially be optimized by moving the buffer creation
+    // inside the loop and using num_global_inputs, which shrinks each iteration.
+    // However, it seems to slow down performance, which occurs because the
+    // destruction of the buffer triggers a transfer of data back to the
+    // host each iteration.
     cl::sycl::buffer<int, 1> x_buf {x_h.data(), cl::sycl::range<1>(vector_size) };
     
     int num_global_inputs = vector_size;
     while(num_global_inputs > 1) {
-      
+
       int num_groups = ceil(num_global_inputs / float(inputs_per_group));
       
       queue.submit([&](cl::sycl::handler& handler) {
 	  
 	  cl::sycl::accessor x_d(x_buf, handler, cl::sycl::read_write);
 
-	  // We are using loca memory, so we need an additional accessor for that memory.
-	  cl::sycl::accessor <int, 1, sycl::access::mode::read_write, sycl::access::target::local> x_local(sycl::range<1>(work_items_per_group), handler);
+	  // We are using local memory, so we need an additional accessor for that memory.
+	  cl::sycl::local_accessor<int, 1> x_local(sycl::range<1>(work_items_per_group), handler);
 
 	  // Unlike the previous examples, we use an nd_randge instead of range to
 	  // specify work-group sizes. Also, we use an nd_item intead of an id 
