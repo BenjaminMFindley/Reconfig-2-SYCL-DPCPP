@@ -113,8 +113,8 @@ int main(int argc, char* argv[]) {
 	      // elements. We first compute the base index of the first input
 	      // The second input is then located at base + stried.
 	      int base = 2*stride*i;
-		if (2*i + 1 < size)
-		  x_d[base] = x_d[base] + x_d[base + stride];	      
+	      if (2*i + 1 < size)
+		x_d[base] = x_d[base] + x_d[base + stride];	      
 	    });
 	});
       
