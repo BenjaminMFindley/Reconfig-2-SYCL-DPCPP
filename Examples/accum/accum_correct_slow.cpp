@@ -1,7 +1,7 @@
 // Greg Stitt
 // University of Florida
 //
-// accum_bad.cpp
+// accum_correct_slow.cpp
 //
 // This SYCL program will create a parallel (vectorized) version of the following
 // sequential code:
@@ -10,103 +10,130 @@
 // for (int i=0; i < VECTOR_SIZE; i++) {
 //   accum += a[i];
 //
+// This example improve the performance of the previous examples by avoiding the
+// need for a separate output array. Instead, if we get creative with where we
+// store outputs, we can guarantee that no work-item overwrites the inputs to
+// another work-item, even with no execution-order guarantee.
+//
+// To accomplish this goal, the output of each work-item is stored at the index
+// of the first input to the work-item. This works because no other work-item
+// will read from that index.
+//
+// The side effect of this decision is that each iteration of the loop
+// will have the inputs stored in different locations in the input vector.
+// Basically, if the inputs are initially store in x_h[0-7], in the second
+// iteration, the inputs would be stored in x_h[0,2,4,6], and in the 3rd
+// iteration, the inputs would be store in x_h[0,4], etc. Basically,
+// each iteration has a "stride" that spreads out the inputs equally, but
+// by an amount that increases exponentially with iterations.
+//
+// For a visual explanation of this indexing strategy, see slides ADDLATER.
 
 #include <iostream>
 #include <iomanip>
 #include <vector>
 #include <random>
 #include <cmath>
+#include <chrono>
 
 #include <CL/sycl.hpp>
 
-const float ALLOWABLE_ERROR = 0.000001;
-bool are_floats_equal(float a, float b, float abs_tol=ALLOWABLE_ERROR, float rel_tol=ALLOWABLE_ERROR) {
+class accum;
 
-  float diff = fabs(a-b);
-  return (diff <= abs_tol || diff <= rel_tol * fmax(fabs(a), fabs(b)));
+void print_usage(const std::string& name) {
+  std::cout << "Usage: " << name << " vector_size (must be positive)" << std::endl;      
 }
 
 
-class accum;
-
 int main(int argc, char* argv[]) { 
 
+  // Check correct usage of command line.
   if (argc != 2) {
-    std::cout << "Usage: " << argv[0] << " vector_size" << std::endl;
-    return 1;
+    print_usage(argv[0]);
+    return 1;    
   }
 
-  const unsigned VECTOR_SIZE = atoi(argv[1]);
-  unsigned num_work_items = ceil(VECTOR_SIZE / 2.0);
+  // Get vector size from command line.
+  int vector_size;
+  vector_size = atoi(argv[1]);
 
-  //std::cout << "NUM_WORK_ITMES = " << num_work_items << std::endl;
-  //for (int i=VECTOR_SIZE; i > 1; i = ceil(i/2.0))
-  //  std::cout << i << std::endl;
-  
-  
-  std::vector<int> x_h(VECTOR_SIZE);
+  if (vector_size <= 0) {
+    print_usage(argv[0]);    
+    return 1;    
+  }
+
+  std::chrono::time_point<std::chrono::system_clock> start_time, end_time;
+  unsigned num_work_items = ceil(vector_size / 2.0);
+  std::vector<int> x_h(vector_size);
   int correct_out = 0;
 
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_int_distribution<> dist(-10, 10);
 
-  for (size_t i=0; i < VECTOR_SIZE; i++) {
+  for (size_t i=0; i < vector_size; i++) {
     x_h[i] = dist(gen);
-    //x_h[i] = i % 10;
     correct_out += x_h[i];
   }
-
-  /*  for (int i=0; i < VECTOR_SIZE; i++) {
-    std::cout << x_h[i] << std::endl;
-  }
-  std::cout << std::endl;*/
   
   try {
     cl::sycl::queue queue(cl::sycl::default_selector_v, [] (sycl::exception_list el) {
-       for (auto ex : el) { std::rethrow_exception(ex); }
-    } );
-   
+	for (auto ex : el) { std::rethrow_exception(ex); }
+      } );
 
-    int iteration = 0;
-    for (int size = VECTOR_SIZE; size > 1; size = ceil(size / 2.0), iteration++) {
+    start_time = std::chrono::system_clock::now();
+
+    // CHANGES FROM PREVIOUS EXAMPLE
+    // Here we track the iteration since we need that information to compute the stride.
+    for (int size = vector_size, iteration = 0; size > 1; size = ceil(size / 2.0), iteration++) {
+
+      // CHANGES FROM PREVIOUS EXAMPLE
+      // Compute the stride.
       int stride = pow(2, iteration);
-      //      std::cout << "Stride: " << stride << std::endl;
 
-      {
-	cl::sycl::buffer<int, 1> x_buf {x_h.data(), cl::sycl::range<1>(VECTOR_SIZE) };
+      // CHANGES FROM PREVIOUS EXAMPLE
+      // IMPORTANT: One significant disdvantage of this approach is that we have
+      // buffer all vector_size elements, not just size like we did in the previous
+      // example. This is required because the inputs are now stored across the entire
+      // vector, which empty indices in the middle. This approach has a massive
+      // overhead because it requires the entire vector to be copied, even if there
+      // are only a small number of inputs left to add.
+      cl::sycl::buffer<int, 1> x_buf {x_h.data(), cl::sycl::range<1>(vector_size) };
       
-	queue.submit([&](cl::sycl::handler& handler) {
+      queue.submit([&](cl::sycl::handler& handler) {
 
-	    cl::sycl::accessor x_d(x_buf, handler, cl::sycl::read_write);
+	  // CHANGES FROM PREVIOUS EXAMPLE
+	  // Here, we go back to using a read_write vector for inputs and outputs.
+	  cl::sycl::accessor x_d(x_buf, handler, cl::sycl::read_write);
 
-	    handler.parallel_for<class accum>(cl::sycl::range<1> { num_work_items }, [=](cl::sycl::id<1> i) {
-
-		int base = 2*stride*i;
+	  handler.parallel_for<class accum>(cl::sycl::range<1> { num_work_items }, [=](cl::sycl::id<1> i) {
+	      
+	      // CHANGES FROM PREVIOUS EXAMPLE
+	      // In this example, the inputs to add are spread out by "stride"
+	      // elements. We first compute the base index of the first input
+	      // The second input is then located at base + stried.
+	      int base = 2*stride*i;
 		if (2*i + 1 < size)
-		  x_d[base] = x_d[base] + x_d[base + stride];
-	      });
-	  });
-
-	queue.wait();
-      }
-
-      /*      for (int i=0; i < VECTOR_SIZE; i++) {
-	std::cout << x_h[i] << std::endl;
-      }
-      std::cout << std::endl;*/
+		  x_d[base] = x_d[base] + x_d[base + stride];	      
+	    });
+	});
+      
+      queue.wait();
     }
+    
+    end_time = std::chrono::system_clock::now();
   }
   catch (cl::sycl::exception& e) {
     std::cout << e.what() << std::endl;
     return 1;
   }
 
-  if (!are_floats_equal(correct_out, x_h[0])) {
+  if (correct_out != x_h[0]) {
     std::cout << "ERROR: output was " << x_h[0] << " instead of " << correct_out << std::endl;
     return 1;
   }
 
-  std::cout << "SUCCESS!" << std::endl;
+  std::chrono::duration<double> seconds = end_time - start_time;
+  std::cout << "SUCCESS! Time: " << seconds.count() << "s" << std::endl;
   return 0;
 }
