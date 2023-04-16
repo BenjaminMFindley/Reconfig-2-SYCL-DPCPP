@@ -1,14 +1,14 @@
 // Greg Stitt
 // University of Florida
 //
-// accum_correct_slow.cpp
+// accum_correct_slow2.cpp
 //
 // This SYCL program will create a parallel (vectorized) version of the following
 // sequential code:
 //
 // int accum = 0;
 // for (int i=0; i < VECTOR_SIZE; i++) {
-//   accum += a[i];
+//   accum += x[i];
 //
 // This example improves performance significantly over the previous one
 // by leveraging work-groups and local memory to 1) minimize repeated accesses
@@ -29,6 +29,10 @@
 // of times the global data is copied. 
 //
 // For a visual explanation of this strategy, see slides ADDLATER.
+//
+// When running the example on the DevCloud, the execution time of this example
+// for 1000000000 (1 billion) inputs was 1.87s.
+
 
 #include <iostream>
 #include <iomanip>
@@ -108,29 +112,37 @@ int main(int argc, char* argv[]) {
   
     start_time = std::chrono::system_clock::now();
 
+    // TODO: Potentially optimize this by moving inside the loop and using num_global_inputs.
+    // CHECK TO SEE IF THIS IS BEING COPIED MULTIPLE TIMES.
     cl::sycl::buffer<int, 1> x_buf {x_h.data(), cl::sycl::range<1>(vector_size) };
     
     int num_global_inputs = vector_size;
     while(num_global_inputs > 1) {
-    
+      
       int num_groups = ceil(num_global_inputs / float(inputs_per_group));
-      //std::cout << "NUMBER OF GROUPS " << num_groups << std::endl;
       
       queue.submit([&](cl::sycl::handler& handler) {
 	  
 	  cl::sycl::accessor x_d(x_buf, handler, cl::sycl::read_write);
-	  
+
+	  // We are using loca memory, so we need an additional accessor for that memory.
 	  cl::sycl::accessor <int, 1, sycl::access::mode::read_write, sycl::access::target::local> x_local(sycl::range<1>(work_items_per_group), handler);
 
+	  // Unlike the previous examples, we use an nd_randge instead of range to
+	  // specify work-group sizes. Also, we use an nd_item intead of an id 
+	  // because the nd_item provides synchronization methods.
 	  handler.parallel_for<class accum>(cl::sycl::nd_range<1>(num_groups * work_items_per_group, work_items_per_group), [=](cl::sycl::nd_item<1> item) {
-	      
+
+	      // Get the global, local and group IDs from the nd_range.	      
 	      size_t global_id = item.get_global_linear_id();
 	      size_t local_id = item.get_local_linear_id();
 	      size_t group_id = item.get_group_linear_id();
 
+	      // Initialize the local memory for the current work-item.
 	      x_local[local_id] = 0;
 
-	      // Perform the first add from global memory.
+	      // Perform the first add from global memory, while simply
+	      // copying data in the case of an odd number of inputs.
 	      if (2*global_id + 1 == num_global_inputs) {
 		x_local[local_id] = x_d[2*global_id];
 	      }
@@ -139,8 +151,12 @@ int main(int argc, char* argv[]) {
 	      }
 	      
 	      // Wait for all work-items in the group to finish the first add.
+	      // This is necessary because we need to ensure the local memory
+	      // is fully loaded before doing more adds.
 	      item.barrier(cl::sycl::access::fence_space::local_space);
 
+	      // Leverage the same strategy as the previous example, just
+	      // within a work-group instead of globally.
 	      int stride = 1;
 	      for (int num_local_inputs = inputs_per_group; num_local_inputs > 1; num_local_inputs = ceil(num_local_inputs/2.0)) {
 
@@ -154,12 +170,16 @@ int main(int argc, char* argv[]) {
 		// work-items within the group, so unlike the previous
 		// examples where a loop inside the kernel code would lead
 		// work-items progressing through the loop at different
-		// rates, we can now synchronize their execution.
+		// rates, we can now synchronize their execution so that
+		// a new iteration does start until all local work-items
+		// have finished the previous iteration.
 		item.barrier(cl::sycl::access::fence_space::local_space);
 	      }
 
-	      // Write the result of the work-group back to global memory
-	      // for the next iteration.
+	      // Write the result (x_local[0]) of the work-group to global memory
+	      // for the next iteration of the outer loop. This writes the outputs
+	      // sequentially (with a stride of 1), so each iteration of the
+	      // outer loop is just a smaller instance of the original problem.
 	      if (local_id == 0) {
 		x_d[group_id] = x_local[0];
 	      }

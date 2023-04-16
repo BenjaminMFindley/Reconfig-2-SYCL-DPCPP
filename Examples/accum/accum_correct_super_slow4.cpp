@@ -1,14 +1,14 @@
 // Greg Stitt
 // University of Florida
 //
-// accum_correct_super_slow2.cpp
+// accum_correct_super_slow4.cpp
 //
 // This SYCL program will create a parallel (vectorized) version of the following
 // sequential code:
 //
 // int accum = 0;
 // for (int i=0; i < VECTOR_SIZE; i++) {
-//   accum += a[i];
+//   accum += x[i];
 //
 // When running the example on the DevCloud, the execution time of this example
 // for 1000000000 (1 billion) inputs was 4.45s.

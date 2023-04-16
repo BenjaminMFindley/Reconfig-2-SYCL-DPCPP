@@ -8,7 +8,7 @@
 //
 // int accum = 0;
 // for (int i=0; i < VECTOR_SIZE; i++) {
-//   accum += a[i];
+//   accum += x[i];
 //
 // This examples fixes one bug from the previous example by synchronizing
 // the start of each iteration of the for loop. However, there is another

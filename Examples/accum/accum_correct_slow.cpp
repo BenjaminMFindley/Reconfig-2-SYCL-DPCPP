@@ -1,19 +1,19 @@
 // Greg Stitt
 // University of Florida
 //
-// accum_correct_slow.cpp
+// accum_correct_slow1.cpp
 //
 // This SYCL program will create a parallel (vectorized) version of the following
 // sequential code:
 //
 // int accum = 0;
 // for (int i=0; i < VECTOR_SIZE; i++) {
-//   accum += a[i];
+//   accum += x[i];
 //
-// This example improve the performance of the previous examples by avoiding the
-// need for a separate output array. Instead, if we get creative with where we
-// store outputs, we can guarantee that no work-item overwrites the inputs to
-// another work-item, even with no execution-order guarantee.
+// This example tries to improve the performance of the previous examples by
+// avoiding the need for a separate output array. Instead, if we get creative
+// with where we store outputs, we can guarantee that no work-item overwrites
+// the inputs to another work-item, even with no execution-order guarantee.
 //
 // To accomplish this goal, the output of each work-item is stored at the index
 // of the first input to the work-item. This works because no other work-item
@@ -21,13 +21,19 @@
 //
 // The side effect of this decision is that each iteration of the loop
 // will have the inputs stored in different locations in the input vector.
-// Basically, if the inputs are initially store in x_h[0-7], in the second
+// Basically, if the inputs are initially stored in x_h[0-7], in the second
 // iteration, the inputs would be stored in x_h[0,2,4,6], and in the 3rd
 // iteration, the inputs would be store in x_h[0,4], etc. Basically,
 // each iteration has a "stride" that spreads out the inputs equally, but
 // by an amount that increases exponentially with iterations.
 //
 // For a visual explanation of this indexing strategy, see slides ADDLATER.
+//
+// When running the example on the DevCloud, the execution time of this example
+// for 1000000000 (1 billion) inputs was 40.37s.
+//
+// While this performance would suggest this approach is bad, we show in the
+// next example how an extension can provide the best performance so far.
 
 #include <iostream>
 #include <iomanip>

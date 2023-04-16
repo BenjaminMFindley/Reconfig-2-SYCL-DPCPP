@@ -8,7 +8,7 @@
 //
 // int accum = 0;
 // for (int i=0; i < VECTOR_SIZE; i++) {
-//   accum += a[i];
+//   accum += x[i];
 //
 // In this example, we optimize the previous example by minimizing the amount
 // of data that is transferred between the host and device.

@@ -1,17 +1,17 @@
 // Greg Stitt
 // University of Florida
 //
-// accum_correct_super_slow.cpp
+// accum_correct_super_slow1.cpp
 //
 // This SYCL program will create a parallel (vectorized) version of the following
 // sequential code:
 //
 // int accum = 0;
 // for (int i=0; i < VECTOR_SIZE; i++) {
-//   accum += a[i];
+//   accum += x[i];
 //
 // The previous example had a bug that was caused by work-items overwriting
-// the inputs to other work-items due to work-items executing in an
+// the inputs to other work-items due to the work-items executing in an
 // unexpected order. Unfortunately, there is no way to guarantee the
 // order of execution of work-items, so instead we must transform the code
 // so that work-items cannot overwrite inputs of other work-items.
