@@ -8,7 +8,7 @@
 //
 // int accum = 0;
 // for (int i=0; i < VECTOR_SIZE; i++) {
-//   accum += a[i];
+//   accum += x[i];
 //
 // The previous example had a bug that was caused by work-items overwriting
 // the inputs to other work-items due to execution in an unexpected order.
