@@ -106,7 +106,16 @@ int main(int argc, char* argv[]) {
 	    // In every iteration, the collection of work-items will reduce
 	    // a "size"-element array to a "size/2"-element array by
 	    // adding all the pairs in the original array. This process
-	    // continues until there is only  1 element left.	    
+	    // continues until there is only  1 element left.
+	    //
+	    // IMPORTANT: This is one source of the errors in this example.
+	    // Although if all the work-items executed perfectly in sync,
+	    // this code code potentially work, such synchronization is
+	    // not guaranteed by SYCL (or most other frameworks). As a
+	    // result, work-item 2 could execute multiple iterations of this
+	    // loop before work-item 1 executes anything. For this
+	    // strategy to work,  we need to add explicit synchronization,
+	    // which we'll see in the next example.
 	    for (int size = vector_size; size > 1; size = ceil(size / 2.0)) {
 	      
 	      // If work-time i is accessing the final element of an
@@ -147,6 +156,6 @@ int main(int argc, char* argv[]) {
   }
 
   std::chrono::duration<double> seconds = end_time - start_time;
-  std::cout << "SUCCESS! Time: " << seconds.count() << std::endl;
+  std::cout << "SUCCESS! Time: " << seconds.count() << "s" << std::endl;
   return 0;
 }
