@@ -86,16 +86,17 @@ int main(int argc, char* argv[]) {
 
 	      // CHANGES FROM PREVIOUS EXAMPLE
 	      // We no longer have a loop here since it was moved to the host so
-	      // that we could synchronize work-items at the of each iteration
+	      // that we could synchronize work-items at the of each iteration.
 	      //
 	      // IMPORTANT: while we did successfully synchronize the start of
 	      // new iterations, we have unfortunately done nothing to
 	      // synchronize execution within an iteration. Consider what happens
 	      // if work-item 1 executes and completes before work-item 0 starts.
 	      // In this case, work-item 0's input will be overwritten before
-	      // performing an add, which will corrupt the results. Therefore,
-	      // we also need to synchronize execution within an iteration,
-	      // which we demonstrate in the next example.
+	      // performing an add, which will corrupt the results. This occurs
+	      // because execution order of work-items is not guaranteed and
+	      // can happen in any order. In the next example, we look at
+	      // how to solve this problem.
 	      if (2*i + 1 == size)
 		x_d[i] = x_d[2*i];
 	      else if (2*i + 1 < size)
