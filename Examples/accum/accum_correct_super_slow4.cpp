@@ -7,7 +7,7 @@
 // sequential code:
 //
 // int accum = 0;
-// for (int i=0; i < VECTOR_SIZE; i++) {
+// for (int i=0; i < VECTOR_SIZE; i++)
 //   accum += x[i];
 //
 // When running the example on the DevCloud, the execution time of this example

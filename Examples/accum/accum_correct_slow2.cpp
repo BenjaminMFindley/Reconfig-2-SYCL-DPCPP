@@ -7,7 +7,7 @@
 // sequential code:
 //
 // int accum = 0;
-// for (int i=0; i < VECTOR_SIZE; i++) {
+// for (int i=0; i < VECTOR_SIZE; i++)
 //   accum += x[i];
 //
 // This example improves performance significantly over the previous one
