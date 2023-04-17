@@ -6,7 +6,7 @@
 // This SYCL program will create a parallel (vectorized) version of the following
 // sequential code, while parallelizing it across two devices.
 //
-// for (int i=0; i < VECTOR_SIZE; i++) {
+// for (int i=0; i < VECTOR_SIZE; i++)
 //   z[i] = a * x[i] + y[i];
 //
 // This implementation again leverages two devices, where each devices performs a
@@ -64,7 +64,7 @@ int main(int argc, char* argv[]) {
 
     cl::sycl::buffer<float, 1> x_buf {x_h.data(), cl::sycl::range<1>(x_h.size()) };
     cl::sycl::buffer<float, 1> y_buf {y_h.data(), cl::sycl::range<1>(y_h.size()) };
-    cl::sycl::buffer<float, 1> z_buf {z_h.data(), cl::sycl::range<1>(y_h.size()) };
+    cl::sycl::buffer<float, 1> z_buf {z_h.data(), cl::sycl::range<1>(z_h.size()) };
 
     // CHANGES FROM PREVIOUS EXAMPLE
     // GPU SAXPY: This code performs a normal vectorized saxpy on the GPU, but on the
