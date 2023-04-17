@@ -6,7 +6,7 @@
 // This SYCL program will create a parallel (vectorized) version of the following
 // sequential code:
 //
-// for (int i=0; i < VECTOR_SIZE; i++) {
+// for (int i=0; i < VECTOR_SIZE; i++)
 //   z[i] = a * x[i] + y[i];
 //
 // This code implements a vectorized SAXPY operation (single-precesion AX + Y)
@@ -55,7 +55,7 @@ int main(int argc, char* argv[]) {
 
     cl::sycl::buffer<float, 1> x_buf {x_h.data(), cl::sycl::range<1>(x_h.size()) };
     cl::sycl::buffer<float, 1> y_buf {y_h.data(), cl::sycl::range<1>(y_h.size()) };
-    cl::sycl::buffer<float, 1> z_buf {z_h.data(), cl::sycl::range<1>(y_h.size()) };
+    cl::sycl::buffer<float, 1> z_buf {z_h.data(), cl::sycl::range<1>(z_h.size()) };
     
     queue.submit([&](cl::sycl::handler& handler) {
 
