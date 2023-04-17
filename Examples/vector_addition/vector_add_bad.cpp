@@ -7,7 +7,7 @@
 // This SYCL program will create a parallel (vectorized) version of the following
 // sequential code:
 //
-// for (int i=0; i < VECTOR_SIZE; i++) {
+// for (int i=0; i < VECTOR_SIZE; i++)
 //   out[i] = in1[i] + in2[i];
 //
 // This example teaches the basics of SYCL, while including a common bug that we
@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
   // dimension, which in this case is the size of each vector.
   cl::sycl::buffer<int, 1> in1_buf {in1_h.data(), cl::sycl::range<1>(in1_h.size()) };
   cl::sycl::buffer<int, 1> in2_buf {in2_h.data(), cl::sycl::range<1>(in2_h.size()) };
-  cl::sycl::buffer<int, 1> out_buf {out_h.data(), cl::sycl::range<1>(in2_h.size()) };
+  cl::sycl::buffer<int, 1> out_buf {out_h.data(), cl::sycl::range<1>(out_h.size()) };
     
   // Next, we tell the device what to do by sending it a function via the queue's
   // submit function. The submit method takes a single parameter, which is specified here

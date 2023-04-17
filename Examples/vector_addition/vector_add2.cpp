@@ -7,7 +7,7 @@
 // This SYCL program will create a parallel (vectorized) version of the following
 // sequential code:
 //
-// for (int i=0; i < VECTOR_SIZE; i++) {
+// for (int i=0; i < VECTOR_SIZE; i++)
 //   out[i] = in1[i] + in2[i];
 //
 // In this modified version of the code, we add exception handling to catch
@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
     
     cl::sycl::buffer<int, 1> in1_buf {in1_h.data(), cl::sycl::range<1>(in1_h.size()) };
     cl::sycl::buffer<int, 1> in2_buf {in2_h.data(), cl::sycl::range<1>(in2_h.size()) };
-    cl::sycl::buffer<int, 1> out_buf {out_h.data(), cl::sycl::range<1>(in2_h.size()) };
+    cl::sycl::buffer<int, 1> out_buf {out_h.data(), cl::sycl::range<1>(out_h.size()) };
     
     queue.submit([&](cl::sycl::handler& handler) {
 
