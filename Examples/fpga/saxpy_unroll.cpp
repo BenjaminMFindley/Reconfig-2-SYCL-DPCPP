@@ -1,7 +1,7 @@
 // Greg Stitt
 // University of Florida
 //
-// saxpy_single.cpp
+// saxpy_unroll.cpp
 //
 // This SYCL program will create a FPGA implementation of the following
 // sequential code:

@@ -1,7 +1,7 @@
 // Greg Stitt
 // University of Florida
 //
-// saxpy_multi_kernel.cpp
+// saxpy_pipe.cpp
 //
 // This SYCL program will create an FPGA implementation of the following
 // sequential code:
