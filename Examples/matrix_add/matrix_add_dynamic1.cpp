@@ -110,6 +110,10 @@ int main(int argc, char* argv[]) {
   }
   catch (cl::sycl::exception& e) {
     std::cout << e.what() << std::endl;
+    delete[] in1_h;
+    delete[] in2_h;
+    delete[] out_h;
+    delete[] correct_out;
     return 1;
   }
   
@@ -120,16 +124,25 @@ int main(int argc, char* argv[]) {
     std::cout << std::endl;
   }
 
+  bool failed = false;
   for (size_t i=0; i < num_rows; i++) {
     for (size_t j=0; j < num_cols; j++) {
       if (out_h[i*num_cols + j] != correct_out[i*num_cols + j]) {
 	std::cout << "ERROR: Execution failed." << std::endl;
-	return 1;
+	failed = true;
+	break;
       }
     }
   }
-  
-  std::cout << "SUCCESS!" << std::endl;
-    
+
+  if (!failed)
+    std::cout << "SUCCESS!" << std::endl;
+
+  // CHANGES FROM PREVIOUS VERSION
+  // Release the memory we allocated for the matrices.
+  delete[] in1_h;
+  delete[] in2_h;
+  delete[] out_h;
+  delete[] correct_out;
   return 0;
 }

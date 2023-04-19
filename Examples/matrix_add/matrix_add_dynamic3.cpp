@@ -35,10 +35,12 @@ public:
   }
 
   ~Matrix() {
-    delete matrix;
+    delete[] matrix;
   }
 
   // NOTE: this only does error checking for the row bounds.
+  // Column bounds could be checked by also creating a row
+  // class that overloads [].
   int* operator[](int i) {
     if (i >= num_rows) {
       throw std::runtime_error("Invalid row accessed");
