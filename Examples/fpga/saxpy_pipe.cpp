@@ -15,8 +15,9 @@
 
 // However, instead of using an extra vector to store the
 // intermediate results, we now use pipes, which act as FIFOs
-// between the kenrnels on the FPGAs. This FIFO functionality
+// between the kernels on the FPGAs. This FIFO functionality
 // is critical because it:
+//
 // 1) enables "deep" parallelism where different kernels run at
 //    the same time without waiting on each other. They instead
 //    only wait on data, not completion.

@@ -9,13 +9,13 @@
 // for (int i=0; i < VECTOR_SIZE; i++)
 //   z[i] = a * x[i] + y[i];
 //
-// This code implements the previous SAXPY example for an FPGA using a
-// single_task (one work-item), instead of a parallel_for. This is a common
-// FPGA style that allows the compiler (or high-level synthesis) to pipeline
-// the code, as opposed to just vectorizing it.
+// This code implements the previous SAXPY example (saxpy_correct.cpp) for an
+// FPGA using a single_task (one work-item), instead of a parallel_for.
+// This is a common FPGA style that allows the compiler (or high-level
+// synthesis tool) to pipeline the code, as opposed to just vectorizing it.
 //
 // Note that other than the single_task and different selector, all other code
-// is identical to the previous SAXPY examples, despite using an FPGA.
+// is identical to the previous saxpy_correct.cpp example, despite using an FPGA.
 
 #include <iostream>
 #include <iomanip>
@@ -24,8 +24,9 @@
 #include <cmath>
 
 #include <CL/sycl.hpp>
-#include <sycl/ext/intel/fpga_extensions.hpp>
 
+// To use INTEL FPGAs, we need to include this header file.
+#include <sycl/ext/intel/fpga_extensions.hpp>
 
 const int VECTOR_SIZE = 1000;
 
@@ -72,7 +73,7 @@ int main(int argc, char* argv[]) {
     // This should not be necessary since Intel defines a
     // fpga_emulator_selector_v. However, that 2023 format would not compile
     // on the DevCloud at the time this tutorial was created.     
-    cl::sycl::queue queue(sycl::ext::intel::fpga_emulator_selector{});
+    cl::sycl::queue queue(cl::sycl::ext::intel::fpga_emulator_selector{});
     
     cl::sycl::buffer<float, 1> x_buf {x_h.data(), cl::sycl::range<1>(x_h.size()) };
     cl::sycl::buffer<float, 1> y_buf {y_h.data(), cl::sycl::range<1>(y_h.size()) };
