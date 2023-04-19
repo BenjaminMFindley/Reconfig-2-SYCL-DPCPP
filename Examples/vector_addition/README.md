@@ -2,8 +2,7 @@
 
 These programs provide a basic introduction to SYCL and DPC++. 
 
-* [vector_add_badd.cpp](vector_add_bad.cpp)
-
+* [vector_add_bad.cpp](vector_add_bad.cpp)
   * Simple SYCL program to showcase data management using queues, buffers, accessors, and kernels
   * Demonstrates a common bug.
   
