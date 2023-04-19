@@ -37,7 +37,8 @@ bool are_floats_equal(float a, float b, float abs_tol=ALLOWABLE_ERROR, float rel
 }
 
 
-class saxpy;
+class a_times_x;
+class plus_y;
 
 int main(int argc, char* argv[]) { 
 
@@ -49,7 +50,7 @@ int main(int argc, char* argv[]) {
 
   // In this example, we need separate vector to buffer the intermediate
   // computation between the two kernels.
-  std::vector<float> x_times_a(VECTOR_SIZE);  
+  std::vector<float> a_times_x(VECTOR_SIZE);  
   
   std::random_device rd;
   std::mt19937 gen(rd());
@@ -68,18 +69,18 @@ int main(int argc, char* argv[]) {
     
     cl::sycl::buffer<float, 1> x_buf {x_h.data(), cl::sycl::range<1>(x_h.size()) };
     cl::sycl::buffer<float, 1> y_buf {y_h.data(), cl::sycl::range<1>(y_h.size()) };
-    cl::sycl::buffer<float, 1> x_times_a_buf {x_times_a.data(), cl::sycl::range<1>(x_times_a.size()) };  
+    cl::sycl::buffer<float, 1> a_times_x_buf {a_times_x.data(), cl::sycl::range<1>(a_times_x.size()) };  
     cl::sycl::buffer<float, 1> z_buf {z_h.data(), cl::sycl::range<1>(z_h.size()) };
 
     // In the first kernel, we just do a vectorized a * x[i], and store the result into
-    // the temporary buffer x_times_a.
+    // the temporary buffer a_times_x.
     queue.submit([&](cl::sycl::handler& handler) {
 
 	cl::sycl::accessor x_d(x_buf, handler, cl::sycl::read_only);
-	cl::sycl::accessor x_times_a_d(x_times_a_buf, handler, cl::sycl::write_only);
+	cl::sycl::accessor a_times_x_d(a_times_x_buf, handler, cl::sycl::write_only);
 
-	handler.parallel_for<class x_times_a>(cl::sycl::range<1> { x_h.size() }, [=](cl::sycl::id<1> i) {
-	    x_times_a_d[i] = a * x_d[i];
+	handler.parallel_for<class a_times_x>(cl::sycl::range<1> { x_h.size() }, [=](cl::sycl::id<1> i) {
+	    a_times_x_d[i] = a * x_d[i];
 	  });
       });
 
@@ -89,18 +90,18 @@ int main(int argc, char* argv[]) {
     // kernel to finish. One advantage of SYCL is that it can automtically determine
     // dependencies when using accessors. Basically, SYCL (more specifically the compiler)
     // notices that the following kernel depends on the previous kernel (a read-after write
-    // dependence), because it reads from x_times_a_d, which is written to in the previous
+    // dependence), because it reads from a_times_x_d, which is written to in the previous
     // kernel. The compiler then adds in the necessary synchronization to avoid race
     // conditions. This makes the code less error prone. There are disadvantages, however,
     // which we will see in later examples on USM.
     queue.submit([&](cl::sycl::handler& handler) {
 
-	cl::sycl::accessor x_times_a_d(x_times_a_buf, handler, cl::sycl::read_only);
+	cl::sycl::accessor a_times_x_d(a_times_x_buf, handler, cl::sycl::read_only);
 	cl::sycl::accessor y_d(y_buf, handler, cl::sycl::read_only);
 	cl::sycl::accessor z_d(z_buf, handler, cl::sycl::write_only);
 
 	handler.parallel_for<class plus_y>(cl::sycl::range<1> { y_h.size() }, [=](cl::sycl::id<1> i) {
-	    z_d[i] = x_times_a_d[i] + y_d[i];
+	    z_d[i] = a_times_x_d[i] + y_d[i];
 	  });
       });
     

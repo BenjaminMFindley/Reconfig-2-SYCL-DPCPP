@@ -2,8 +2,7 @@
 // University of Florida
 //
 // saxpy_multi_device.cpp
-//
-// This SYCL program will create a parallel (vectorized) version of the following
+// // This SYCL program will create a parallel (vectorized) version of the following
 // sequential code:
 //
 // for (int i=0; i < VECTOR_SIZE; i++)
@@ -41,7 +40,7 @@ bool are_floats_equal(float a, float b, float abs_tol=ALLOWABLE_ERROR, float rel
 }
 
 
-class x_times_a;
+class a_times_x;
 class plus_y;
 
 int main(int argc, char* argv[]) { 
@@ -52,7 +51,7 @@ int main(int argc, char* argv[]) {
   std::vector<float> z_h(VECTOR_SIZE);
   std::vector<float> correct_out(VECTOR_SIZE);
 
-  std::vector<float> x_times_a(VECTOR_SIZE);  
+  std::vector<float> a_times_x(VECTOR_SIZE);  
   
   std::random_device rd;
   std::mt19937 gen(rd());
@@ -76,7 +75,7 @@ int main(int argc, char* argv[]) {
     
     cl::sycl::buffer<float, 1> x_buf {x_h.data(), cl::sycl::range<1>(x_h.size()) };
     cl::sycl::buffer<float, 1> y_buf {y_h.data(), cl::sycl::range<1>(y_h.size()) };
-    cl::sycl::buffer<float, 1> x_times_a_buf {x_times_a.data(), cl::sycl::range<1>(x_times_a.size()) };  
+    cl::sycl::buffer<float, 1> a_times_x_buf {a_times_x.data(), cl::sycl::range<1>(a_times_x.size()) };  
     cl::sycl::buffer<float, 1> z_buf {z_h.data(), cl::sycl::range<1>(z_h.size()) };
 
     // CHANGES FROM PREVIOUS EXAMPLE
@@ -85,10 +84,10 @@ int main(int argc, char* argv[]) {
     queue_gpu.submit([&](cl::sycl::handler& handler) {
 
 	cl::sycl::accessor x_d(x_buf, handler, cl::sycl::read_only);
-	cl::sycl::accessor x_times_a_d(x_times_a_buf, handler, cl::sycl::write_only);
+	cl::sycl::accessor a_times_x_d(a_times_x_buf, handler, cl::sycl::write_only);
 
-	handler.parallel_for<class x_times_a>(cl::sycl::range<1> { x_h.size() }, [=](cl::sycl::id<1> i) {
-	    x_times_a_d[i] = a * x_d[i];
+	handler.parallel_for<class a_times_x>(cl::sycl::range<1> { x_h.size() }, [=](cl::sycl::id<1> i) {
+	    a_times_x_d[i] = a * x_d[i];
 	  });
       });
 
@@ -98,12 +97,12 @@ int main(int argc, char* argv[]) {
     // are being executed across multiple devices.
     queue_cpu.submit([&](cl::sycl::handler& handler) {
 
-	cl::sycl::accessor x_times_a_d(x_times_a_buf, handler, cl::sycl::read_only);
+	cl::sycl::accessor a_times_x_d(a_times_x_buf, handler, cl::sycl::read_only);
 	cl::sycl::accessor y_d(y_buf, handler, cl::sycl::read_only);
 	cl::sycl::accessor z_d(z_buf, handler, cl::sycl::write_only);
 
 	handler.parallel_for<class plus_y>(cl::sycl::range<1> { y_h.size() }, [=](cl::sycl::id<1> i) {
-	    z_d[i] = x_times_a_d[i] + y_d[i];
+	    z_d[i] = a_times_x_d[i] + y_d[i];
 	  });
       });
 
