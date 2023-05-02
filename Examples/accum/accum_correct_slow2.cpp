@@ -194,7 +194,9 @@ int main(int argc, char* argv[]) {
 
     // We don't have to do this here for the code to work,
     // but we want to include the output transfer times
-    // in our execution time calculations.
+    // in our execution time calculations. At this point,
+    // x_buf hasn't been destructed yet, so we need to
+    // explictly copy it before sampling the ending time.
     x_buf.get_access<cl::sycl::access::mode::read>();
     end_time = std::chrono::system_clock::now();
   }
