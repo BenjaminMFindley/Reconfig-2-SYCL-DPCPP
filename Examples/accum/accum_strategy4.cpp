@@ -50,6 +50,7 @@ int main(int argc, char* argv[]) {
   std::vector<int> x_h(vector_size);
   std::vector<int> y_h(vector_size);
   int correct_out = 0;
+  int actual_out;
   unsigned iteration = 0;
 
   std::random_device rd;
@@ -74,11 +75,6 @@ int main(int argc, char* argv[]) {
     
     for (int size = vector_size; size > 1; size = ceil(size / 2.0)) {
 
-      // CHANGES FROM PREVIOUS EXAMPLE
-      // In this version, we optimize further by not always using the same number of
-      // work-items, which were previously calculated based on the original vector
-      // size. Since the size (the number of items to add) shrinks every iteration),
-      // we can similarly shrink the number of work-items every iteration.
       unsigned num_work_items = ceil(size / 2.0);
       
       queue.submit([&](cl::sycl::handler& handler) {
@@ -88,27 +84,16 @@ int main(int argc, char* argv[]) {
 	  
 	  handler.parallel_for<class accum>(cl::sycl::range<1> { num_work_items }, [=](cl::sycl::id<1> i) {
 
+	      // CHANGES FROM PREVIOUS EXAMPLE:
+	      // We dynamically determine the input and output
+	      // array based on the iteration.
 	      const auto &in = iteration % 2 == 0 ? x_d : y_d;
 	      auto &out = iteration % 2 == 0 ? y_d : x_d;
 	      
 	      if (2*i + 1 == size)
 		out[i] = in[2*i];
 	      else if (2*i + 1 < size)
-		out[i] = in[2*i] + in[2*i+1];
-	      
-	      /*	      if (1) {		
-		if (2*i + 1 == size)
-		  y_d[i] = x_d[2*i];
-		else if (2*i + 1 < size)
-		  y_d[i] = x_d[2*i] + x_d[2*i+1];
-	      }
-	      else {
-
-		if (2*i + 1 == size)
-		  x_d[i] = y_d[2*i];
-		else if (2*i + 1 < size)
-		  x_d[i] = y_d[2*i] + y_d[2*i+1];
-		  }*/
+		out[i] = in[2*i] + in[2*i+1];	      
 	    });
 	});
       
@@ -130,6 +115,19 @@ int main(int argc, char* argv[]) {
 	std::cout << std::endl;*/
       iteration ++;
     }
+
+    // We need to make sure to include the output transfer
+    // times in the execution time calculations, so
+    // we read back the output here instead of after
+    // the buffers get destructed.    
+    if (iteration % 2 == 0) {
+      x_buf.get_access<cl::sycl::access::mode::read>();
+      actual_out = x_h[0];
+    }
+    else {
+      y_buf.get_access<cl::sycl::access::mode::read>();
+      actual_out = y_h[0];
+    }
     
     end_time = std::chrono::system_clock::now();
   }
@@ -138,7 +136,10 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  int actual_out = iteration % 2 == 0 ? x_h[0] : y_h[0];
+  // If we weren't benchmarking the performance, we could
+  // just grab the output here after the buffers are
+  // destructed.
+  // actual_out = iteration % 2 == 0 ? x_h[0] : y_h[0];
   
   if (correct_out != actual_out) {
     std::cout << "ERROR: output was " << actual_out << " instead of " << correct_out << std::endl;
