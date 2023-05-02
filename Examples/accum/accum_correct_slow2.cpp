@@ -128,7 +128,7 @@ int main(int argc, char* argv[]) {
 	  cl::sycl::accessor x_d(x_buf, handler, cl::sycl::read_write);
 
 	  // We are using local memory, so we need an additional accessor for that memory.
-	  cl::sycl::local_accessor<int, 1> x_local(sycl::range<1>(work_items_per_group), handler);
+	  cl::sycl::local_accessor<int, 1> x_local(cl::sycl::range<1>(work_items_per_group), handler);
 
 	  // Unlike the previous examples, we use an nd_randge instead of range to
 	  // specify work-group sizes. Also, we use an nd_item intead of an id 
