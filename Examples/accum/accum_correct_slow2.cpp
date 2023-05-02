@@ -191,7 +191,11 @@ int main(int argc, char* argv[]) {
       queue.wait();
       num_global_inputs = num_groups;
     }
-    
+
+    // We don't have to do this here for the code to work,
+    // but we want to include the output transfer times
+    // in our execution time calculations.
+    x_buf.get_access<cl::sycl::access::mode::read>();
     end_time = std::chrono::system_clock::now();
   }
   catch (cl::sycl::exception& e) {
