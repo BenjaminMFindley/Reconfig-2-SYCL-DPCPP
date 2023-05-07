@@ -61,6 +61,7 @@ int main(int argc, char* argv[]) {
   std::chrono::time_point<std::chrono::system_clock> start_time, end_time;
   std::vector<int> x_h(vector_size);
   std::vector<int> y_h(vector_size);
+  
 
   std::random_device rd;
   std::mt19937 gen(rd());
@@ -80,6 +81,17 @@ int main(int argc, char* argv[]) {
 	for (auto ex : el) { std::rethrow_exception(ex); }
       } );
 
+    // Create 
+    int *x_shared = cl::sycl::malloc_shared<int>(vector_size, queue);
+    for (size_t i=0; i < vector_size; i++)
+      x_shared[i] = x_h[i];
+    
+    //int *x_usm_d = cl::sycl::malloc_device<int>(vector_size, queue);
+    //    for (size_t i=0; i < vector_size; i++)
+    //x_usm_d[i] = x_h[i];
+
+    
+    
     start_time = std::chrono::system_clock::now();
 
     cl::sycl::buffer<int, 1> x_buf {x_h.data(), cl::sycl::range<1>(vector_size) };
