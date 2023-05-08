@@ -1,48 +1,67 @@
 // Greg Stitt
 // University of Florida
 //
-// accum_correct_super_slow1.cpp
+// copy.cpp
 //
-// This SYCL program will create a parallel (vectorized) version of the following
-// sequential code:
+// This example uses a kernel that simply copies an input vector to and
+// output vector using different communication methods.
 //
-// int accum = 0;
-// for (int i=0; i < VECTOR_SIZE; i++)
-//   accum += x[i];
+// The example is intended to compare buffers/accessors with Unified Shared Memory (USM).
+// USM has three different allocation modes: device, host, and shared.
+// Device allocation allocates memory on the device that is only accessible from the device
+// and requires explicit transfers to/from the host.
+// Shared allocation enables allocation to migrate between the host and device, with all
+// transfers being implict.
+// Host allocation uses host memory with implicit transfers.
 //
-// The previous example had a bug that was caused by work-items overwriting
-// the inputs to other work-items due to execution in an unexpected order.
-// Unfortunately, there is no way to guarantee the order of execution of
-// work-items, so instead we must transform the code so that work-items
-// cannot overwrite inputs of other work-items.
+// When running on the DevCloud with 1B inputs, these were the execution times.
 //
-// In this example, we accomplish this goal by including an output array so
-// that work-items read from an input array and write to the output array.
+// Buffers: 2.8734s
+// USM malloc_shared: 0.798599s
+// USM malloc_host: 0.80254s
+// USM malloc_device: 2.64276s
 //
-// The end result is a correct implementation. However, it is very slow,
-// which we improve in the next examples.
+// For 1000 inputs, the execution times were:
 //
-// When running the example on the DevCloud, the execution time of this example
-// for 1000000000 (1 billion) inputs was 84.85s.
+// Buffers: 0.0686288s
+// USM malloc_shared: 9.0011e-05s
+// USM malloc_host: 5.3256e-05s
+// USM malloc_device: 0.000389817s
+//
+// Similar trends are seen for different input sizes.
+//
+// In general, buffers/accessors have the most overhead. Explicit transfers with USM
+// device allocation is slower than both implicit approaches. It is not clear why
+// the implicit USM transfers are so much faster, but I suspect the compiler is
+// overlapping the transfers with computation. I would expect these results to change
+// significantly with different compilers and/or devices, so it would be a good idea
+// to repeat this analysis for your targeted environment.
+//
+// One consequence of using the implicit transfers if that you really don't know
+// when data is or will be transfered. It might vary from different compilers and
+// devices. You can use explicit transfers to avoid this, but considering the
+// improved performance, it would be best to profile your target environment first.
+//
+// TODO: Figure out why shared and host times swap when you change their order in the code.
 
 #include <iostream>
 #include <iomanip>
 #include <vector>
 #include <random>
-#include <cmath>
 #include <chrono>
 
 #include <CL/sycl.hpp>
 
 class copy_buffer;
-class copy_usm_shared;
-class copy_usm_device;
-class copy_usm_host;
+class copy_usm_implicit;
+class copy_usm_explicit;
 
 void print_usage(const std::string& name) {
   std::cout << "Usage: " << name << " vector_size (must be positive)" << std::endl;      
 }
 
+
+// Copy function for buffers/accessors.
 
 void copy_buffer(cl::sycl::queue &queue, const std::vector<int> &x_h, std::vector<int> &y_h) {
 
@@ -68,11 +87,13 @@ void copy_buffer(cl::sycl::queue &queue, const std::vector<int> &x_h, std::vecto
 }
 
 
-void copy_usm_shared(cl::sycl::queue &queue, const int *x_d, int *y_d, size_t vector_size) {
+// Copy function for USM allocation methods with implicit transfers.
+
+void copy_usm_implicit(cl::sycl::queue &queue, const int *x_d, int *y_d, size_t vector_size) {
 
   queue.submit([&](cl::sycl::handler& handler) {
 
-      handler.parallel_for<class copy_usm_shared>(cl::sycl::range<1> { vector_size }, [=](cl::sycl::id<1> i) {
+      handler.parallel_for<class copy_usm_implicit>(cl::sycl::range<1> { vector_size }, [=](cl::sycl::id<1> i) {
 
 	  y_d[i] = x_d[i];
 	});
@@ -82,29 +103,34 @@ void copy_usm_shared(cl::sycl::queue &queue, const int *x_d, int *y_d, size_t ve
 }
 
 
-void copy_usm_device(cl::sycl::queue &queue, const std::vector<int> &x_h, std::vector<int> &y_h) {
+// Copy function for USM device allocation with explicit transfers.
+
+void copy_usm_explicit(cl::sycl::queue &queue, const std::vector<int> &x_h, std::vector<int> &y_h) {
 
   if (x_h.size() != y_h.size()) {
     throw std::runtime_error("Vectors have different sizes");
   }
-  
+
+  // Allocate memory on the device.
   int *x_d = cl::sycl::malloc_device<int>(x_h.size(), queue);
   int *y_d = cl::sycl::malloc_device<int>(y_h.size(), queue);
 
+  // Explicitly transfer inputs to device.
   queue.memcpy(x_d, x_h.data(), sizeof(int) * x_h.size());
   
   queue.submit([&](cl::sycl::handler& handler) {
 
-      handler.parallel_for<class copy_usm_device>(cl::sycl::range<1> { x_h.size() }, [=](cl::sycl::id<1> i) {
+      handler.parallel_for<class copy_usm_explicit>(cl::sycl::range<1> { x_h.size() }, [=](cl::sycl::id<1> i) {
 
 	  y_d[i] = x_d[i];
 	});
     });
 
+  // Explicitly copy the output back to the host.  
   queue.memcpy(y_h.data(), y_d, sizeof(int) * y_h.size());
   queue.wait_and_throw();
 
-
+  // Free the device memory.
   cl::sycl::free(x_d, queue);
   cl::sycl::free(y_d, queue);
 }
@@ -150,46 +176,112 @@ int main(int argc, char* argv[]) {
 	for (auto ex : el) { std::rethrow_exception(ex); }
       } );
 
-    // Create memory for USM shared allocation, where memory is accesible on host
-    // and device, and transfers are implicit.
-    int *x_shared = cl::sycl::malloc_shared<int>(vector_size, queue);
-    int *y_shared = cl::sycl::malloc_shared<int>(vector_size, queue);
-    for (size_t i=0; i < vector_size; i++)
-      x_shared[i] = x_h[i];      
+    ////////////////////////////////////////////////////////////////////////////
+    // BEGIN TEST BUFFER/ALLOCATOR METHOD
     
     start_time = std::chrono::system_clock::now();
-    //copy_buffer(queue, x_h, y_h);   
-    end_time = std::chrono::system_clock::now();
-    std::chrono::duration<double> buffer_time = end_time - start_time;
+    copy_buffer(queue, x_h, y_h);
+
+    // We normally would exclude this comparison from execution time, but
+    // we include it to be more fair to the implicit USM methods.
     if (x_h != y_h) {
       std::cout << "ERROR: buffer execution failed." << std::endl;
-      //  return 1;
+      return 1;
     }
+    end_time = std::chrono::system_clock::now();
+    std::chrono::duration<double> buffer_time = end_time - start_time;
+
+    // END TEST BUFFER/ALLOCATOR METHOD
+    ////////////////////////////////////////////////////////////////////////////
+
+    
+    ////////////////////////////////////////////////////////////////////////////
+    // BEGIN TEST USM IMPLICIT TRANSFERS USING MALLOC_SHARED   
+       
+    // Create memory for USM shared allocation, where memory is accesible on host
+    // and device, and transfers are implicit. We exclude this from the
+    // execution time because host memory must be allocated for all approaches.
+    // However, it might be worth investigating how much slower malloc_shared
+    // is compared to traditional C++ allocation.
+    int *x_usm_shared = cl::sycl::malloc_shared<int>(vector_size, queue);
+    int *y_usm_shared = cl::sycl::malloc_shared<int>(vector_size, queue);
+    memset(y_usm_shared, 0, sizeof(int) * vector_size);
     
     start_time = std::chrono::system_clock::now();
-    copy_usm_shared(queue, x_shared, y_shared, vector_size);    
-    end_time = std::chrono::system_clock::now();
-    std::chrono::duration<double> shared_time = end_time - start_time;
-    if (memcmp(x_shared, y_shared, sizeof(int) * vector_size)) {
+
+    // We include initialization of the x_usm_shared array in the execution time
+    // because this can potentially trigger transfers to the device.
+    for (size_t i=0; i < vector_size; i++)
+      x_usm_shared[i] = x_h[i];      
+    
+    copy_usm_implicit(queue, x_usm_shared, y_usm_shared, vector_size);
+
+    // We have to include this comparison in the execution time because it
+    // can trigger reads from the device back to the host.
+    if (memcmp(x_usm_shared, y_usm_shared, sizeof(int) * vector_size)) {
       std::cout << "ERROR: USM malloc_shared execution failed." << std::endl;
       return 1;
     }
+    end_time = std::chrono::system_clock::now();    
+    std::chrono::duration<double> shared_time = end_time - start_time;
+    cl::sycl::free(x_usm_shared, queue);
+    cl::sycl::free(y_usm_shared, queue);
 
-   
+    // END TEST USM IMPLICIT TRANSFERS USING MALLOC_SHARED   
+    ////////////////////////////////////////////////////////////////////////////
+
+
+    ////////////////////////////////////////////////////////////////////////////
+    // BEGIN TEST USM IMPLICIT TRANSFERS USING MALLOC_HOST
+    //
+    // This is identical to the malloc_shared test, but uses malloc_host instead.
+    
+    int *x_usm_host = cl::sycl::malloc_host<int>(vector_size, queue);
+    int *y_usm_host = cl::sycl::malloc_host<int>(vector_size, queue);
+    memset(y_usm_host, 0, sizeof(int) * vector_size);
+    
+    start_time = std::chrono::system_clock::now();
+    for (size_t i=0; i < vector_size; i++)
+      x_usm_host[i] = x_h[i];      
+    
+    copy_usm_implicit(queue, x_usm_host, y_usm_host, vector_size);
+    if (memcmp(x_usm_host, y_usm_host, sizeof(int) * vector_size)) {
+      std::cout << "ERROR: USM malloc_host execution failed." << std::endl;
+      return 1;
+    }       
+    end_time = std::chrono::system_clock::now();
+    std::chrono::duration<double> host_time = end_time - start_time;
+    cl::sycl::free(x_usm_host, queue);
+    cl::sycl::free(y_usm_host, queue);
+
+    // END TEST USM IMPLICIT TRANSFERS USING MALLOC_HOST  
+    ////////////////////////////////////////////////////////////////////////////
+
+    ////////////////////////////////////////////////////////////////////////////
+    // BEGIN TEST USM EXPLICIT TRANSFERS USING MALLOC_DEVICE
+
+    // Reset the y_h vector to ensure the new function is changing the data.
     std::fill(y_h.begin(), y_h.end(), 0);
     
     start_time = std::chrono::system_clock::now();
-    copy_usm_device(queue, x_h, y_h);
-    end_time = std::chrono::system_clock::now();
-    std::chrono::duration<double> device_time = end_time - start_time;
+    copy_usm_explicit(queue, x_h, y_h);
+
+    // Like the buffer test, this is only included to be more fair to the
+    // implicit USM tests.
     if (x_h != y_h) {
       std::cout << "ERROR: USM malloc_device execution failed." << std::endl;
       return 1;
     }
+    end_time = std::chrono::system_clock::now();    
+    std::chrono::duration<double> device_time = end_time - start_time;
+    
+    // END TEST USM EXPLICIT TRANSFERS USING MALLOC_DEVICE
+    ////////////////////////////////////////////////////////////////////////////
     
     std::cout << "SUCCESS!" << std::endl
 	      << "Buffers: " << buffer_time.count() << "s" << std::endl
 	      << "USM malloc_shared: " << shared_time.count() << "s" << std::endl
+      	      << "USM malloc_host: " << host_time.count() << "s" << std::endl
 	      << "USM malloc_device: " << device_time.count() << "s" << std::endl;
   }
   catch (cl::sycl::exception& e) {
