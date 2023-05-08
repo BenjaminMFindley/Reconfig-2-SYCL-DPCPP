@@ -34,11 +34,81 @@
 
 #include <CL/sycl.hpp>
 
-class copy;
+class copy_buffer;
+class copy_usm_shared;
+class copy_usm_device;
+class copy_usm_host;
 
 void print_usage(const std::string& name) {
   std::cout << "Usage: " << name << " vector_size (must be positive)" << std::endl;      
 }
+
+
+void copy_buffer(cl::sycl::queue &queue, const std::vector<int> &x_h, std::vector<int> &y_h) {
+
+  if (x_h.size() != y_h.size()) {
+    throw std::runtime_error("Vectors have different sizes");
+  }
+  
+  cl::sycl::buffer<int, 1> x_buf {x_h.data(), cl::sycl::range<1>(x_h.size()) };
+  cl::sycl::buffer<int, 1> y_buf {y_h.data(), cl::sycl::range<1>(y_h.size()) };
+
+  queue.submit([&](cl::sycl::handler& handler) {
+
+      cl::sycl::accessor x_d(x_buf, handler, cl::sycl::read_only);
+      cl::sycl::accessor y_d(y_buf, handler, cl::sycl::write_only);
+
+      handler.parallel_for<class copy_buffer>(cl::sycl::range<1> { x_h.size() }, [=](cl::sycl::id<1> i) {
+
+	  y_d[i] = x_d[i];
+	});
+    });
+
+  queue.wait_and_throw();  
+}
+
+
+void copy_usm_shared(cl::sycl::queue &queue, const int *x_d, int *y_d, size_t vector_size) {
+
+  queue.submit([&](cl::sycl::handler& handler) {
+
+      handler.parallel_for<class copy_usm_shared>(cl::sycl::range<1> { vector_size }, [=](cl::sycl::id<1> i) {
+
+	  y_d[i] = x_d[i];
+	});
+    });
+
+  queue.wait_and_throw();  
+}
+
+
+void copy_usm_device(cl::sycl::queue &queue, const std::vector<int> &x_h, std::vector<int> &y_h) {
+
+  if (x_h.size() != y_h.size()) {
+    throw std::runtime_error("Vectors have different sizes");
+  }
+  
+  int *x_d = cl::sycl::malloc_device<int>(x_h.size(), queue);
+  int *y_d = cl::sycl::malloc_device<int>(y_h.size(), queue);
+
+  queue.memcpy(x_d, x_h.data(), sizeof(int) * x_h.size());
+  
+  queue.submit([&](cl::sycl::handler& handler) {
+
+      handler.parallel_for<class copy_usm_device>(cl::sycl::range<1> { x_h.size() }, [=](cl::sycl::id<1> i) {
+
+	  y_d[i] = x_d[i];
+	});
+    });
+
+  queue.memcpy(y_h.data(), y_d, sizeof(int) * y_h.size());
+  queue.wait_and_throw();
+
+
+  cl::sycl::free(x_d, queue);
+  cl::sycl::free(y_d, queue);
+}
+
 
 
 int main(int argc, char* argv[]) { 
@@ -60,8 +130,7 @@ int main(int argc, char* argv[]) {
 
   std::chrono::time_point<std::chrono::system_clock> start_time, end_time;
   std::vector<int> x_h(vector_size);
-  std::vector<int> y_h(vector_size);
-  
+  std::vector<int> y_h(vector_size); 
 
   std::random_device rd;
   std::mt19937 gen(rd());
@@ -81,49 +150,52 @@ int main(int argc, char* argv[]) {
 	for (auto ex : el) { std::rethrow_exception(ex); }
       } );
 
-    // Create 
+    // Create memory for USM shared allocation, where memory is accesible on host
+    // and device, and transfers are implicit.
     int *x_shared = cl::sycl::malloc_shared<int>(vector_size, queue);
+    int *y_shared = cl::sycl::malloc_shared<int>(vector_size, queue);
     for (size_t i=0; i < vector_size; i++)
-      x_shared[i] = x_h[i];
-    
-    //int *x_usm_d = cl::sycl::malloc_device<int>(vector_size, queue);
-    //    for (size_t i=0; i < vector_size; i++)
-    //x_usm_d[i] = x_h[i];
-
-    
+      x_shared[i] = x_h[i];      
     
     start_time = std::chrono::system_clock::now();
-
-    cl::sycl::buffer<int, 1> x_buf {x_h.data(), cl::sycl::range<1>(vector_size) };
-    cl::sycl::buffer<int, 1> y_buf {y_h.data(), cl::sycl::range<1>(vector_size) };
-
-    
-    queue.submit([&](cl::sycl::handler& handler) {
-	  
-	cl::sycl::accessor x_d(x_buf, handler, cl::sycl::read_only);
-	cl::sycl::accessor y_d(y_buf, handler, cl::sycl::write_only);
-	  
-	handler.parallel_for<class copy>(cl::sycl::range<1> { vector_size }, [=](cl::sycl::id<1> i) {
-
-	    y_d[i] = x_d[i];
-	  });
-      });
-      
-    queue.wait_and_throw();
-
+    //copy_buffer(queue, x_h, y_h);   
     end_time = std::chrono::system_clock::now();
+    std::chrono::duration<double> buffer_time = end_time - start_time;
+    if (x_h != y_h) {
+      std::cout << "ERROR: buffer execution failed." << std::endl;
+      //  return 1;
+    }
+    
+    start_time = std::chrono::system_clock::now();
+    copy_usm_shared(queue, x_shared, y_shared, vector_size);    
+    end_time = std::chrono::system_clock::now();
+    std::chrono::duration<double> shared_time = end_time - start_time;
+    if (memcmp(x_shared, y_shared, sizeof(int) * vector_size)) {
+      std::cout << "ERROR: USM malloc_shared execution failed." << std::endl;
+      return 1;
+    }
+
+   
+    std::fill(y_h.begin(), y_h.end(), 0);
+    
+    start_time = std::chrono::system_clock::now();
+    copy_usm_device(queue, x_h, y_h);
+    end_time = std::chrono::system_clock::now();
+    std::chrono::duration<double> device_time = end_time - start_time;
+    if (x_h != y_h) {
+      std::cout << "ERROR: USM malloc_device execution failed." << std::endl;
+      return 1;
+    }
+    
+    std::cout << "SUCCESS!" << std::endl
+	      << "Buffers: " << buffer_time.count() << "s" << std::endl
+	      << "USM malloc_shared: " << shared_time.count() << "s" << std::endl
+	      << "USM malloc_device: " << device_time.count() << "s" << std::endl;
   }
   catch (cl::sycl::exception& e) {
     std::cout << e.what() << std::endl;
     return 1;
   }
   
-  if (x_h != y_h) {
-    std::cout << "ERROR: execution failed." << std::endl;
-    return 1;
-  }
-
-  std::chrono::duration<double> seconds = end_time - start_time;
-  std::cout << "SUCCESS! Time: " << seconds.count() << "s" << std::endl;
   return 0;
 }
