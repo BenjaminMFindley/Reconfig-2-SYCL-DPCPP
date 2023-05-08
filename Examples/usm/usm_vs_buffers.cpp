@@ -1,7 +1,7 @@
 // Greg Stitt
 // University of Florida
 //
-// copy.cpp
+// usm_vs_buffers.cpp
 //
 // This example uses a kernel that simply copies an input vector to and
 // output vector using different communication methods.
@@ -177,7 +177,7 @@ int main(int argc, char* argv[]) {
       } );
 
     ////////////////////////////////////////////////////////////////////////////
-    // BEGIN TEST BUFFER/ALLOCATOR METHOD
+    // BEGIN TEST BUFFER/ACCESSOR METHOD
     
     start_time = std::chrono::system_clock::now();
     copy_buffer(queue, x_h, y_h);
@@ -191,7 +191,7 @@ int main(int argc, char* argv[]) {
     end_time = std::chrono::system_clock::now();
     std::chrono::duration<double> buffer_time = end_time - start_time;
 
-    // END TEST BUFFER/ALLOCATOR METHOD
+    // END TEST BUFFER/ACCESSOR METHOD
     ////////////////////////////////////////////////////////////////////////////
 
     
